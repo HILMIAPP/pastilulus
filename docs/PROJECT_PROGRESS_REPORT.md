@@ -66,8 +66,9 @@ Harga bisa diubah dari:
 Status Midtrans:
 
 - UI checkout dan consent legal sudah ada.
-- API route Snap token masih mode development/placeholder.
-- Webhook belum mengaktifkan paket produksi; wajib tambah validasi signature dan update subscription dari backend.
+- API route Snap token sudah membuat transaksi Midtrans Snap ketika env Midtrans tersedia.
+- Webhook sudah memverifikasi `signature_key` Midtrans.
+- Webhook belum mengaktifkan paket produksi; langkah berikutnya adalah simpan order/payment dan update subscription dari backend secara idempotent.
 
 ### 3. Landing, Blog, Kontak, Katalog
 

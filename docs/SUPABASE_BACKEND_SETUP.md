@@ -83,3 +83,23 @@ Schema v2 sudah mencakup:
 3. Tambahkan seed data untuk 20 PTN, paket tryout, dan soal production.
 4. Integrasikan Midtrans webhook untuk mengaktifkan subscription dari server.
 5. Gunakan `GROQ_API_KEY` hanya di server route, jangan expose ke client.
+
+## 7. Midtrans
+
+Env lokal sudah disiapkan di `.env.local`:
+
+- `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`
+- `MIDTRANS_SERVER_KEY`
+- `MIDTRANS_IS_PRODUCTION=true`
+
+Route yang sudah aktif:
+
+- `POST /api/payments/snap-token`: membuat transaksi Midtrans Snap.
+- `POST /api/payments/midtrans-webhook`: memverifikasi `signature_key` Midtrans.
+
+Backlog:
+
+- Buat tabel `payments` atau pakai `subscriptions` sebagai order ledger.
+- Simpan order sebelum redirect ke Midtrans.
+- Webhook harus update `subscriptions.status` hanya setelah status transaksi valid.
+- Handler webhook harus idempotent berdasarkan `order_id`.
