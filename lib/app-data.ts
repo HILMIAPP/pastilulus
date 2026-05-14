@@ -1,0 +1,175 @@
+import { soalUmPaket1, soalUmPaket2 } from "@/lib/um-question-bank";
+import { soalUm10PtnPaket } from "@/lib/um-question-bank-10-ptn";
+
+/** Konten try out hasil impor dari folder SOAL UM. */
+
+export type TryoutPaket = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string;
+  soalCount: number;
+  durasiMenit: number;
+  pola: string;
+  akses: "gratis" | "belajar_pro";
+  scoring: string;
+};
+
+const kampusTryoutPaket: TryoutPaket[] = [
+  {
+    id: "simak-ui-100",
+    slug: "simak-ui-100",
+    title: "SIMAK UI - Full 100 Soal",
+    subtitle: "Paket spesifik Universitas Indonesia: TPS, Matdas, dan TKA campuran",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter SIMAK UI: penalaran kritis, literasi akademik panjang, dan matematika konseptual.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "um-ugm-100",
+    slug: "um-ugm-100",
+    title: "CBT UM UGM - Full 100 Soal",
+    subtitle: "Latihan kampus UGM dengan pola TPS + TKA dan pembahasan lengkap",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter UM UGM CBT: hitungan cepat, literasi, dan konsep lintas bidang.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "sm-itb-100",
+    slug: "sm-itb-100",
+    title: "SM ITB - Full 100 Soal",
+    subtitle: "Paket seleksi mandiri ITB untuk penalaran, matematika, dan saintek",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter SM ITB: logika, kuantitatif, dan problem solving bertahap.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "smua-unair-100",
+    slug: "smua-unair-100",
+    title: "SMUA UNAIR - Full 100 Soal",
+    subtitle: "Paket mandiri UNAIR dengan kombinasi TPS, literasi, dan TKA",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter UNAIR: pemahaman bacaan, sains dasar, dan penalaran kontekstual.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "utm-ipb-100",
+    slug: "utm-ipb-100",
+    title: "UTM IPB - Full 100 Soal",
+    subtitle: "Paket mandiri IPB untuk TPS, matematika dasar, dan TKA terpadu",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter IPB: data, biologi, kuantitatif, dan penalaran aplikatif.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "sm-its-100",
+    slug: "sm-its-100",
+    title: "SM ITS - Full 100 Soal",
+    subtitle: "Paket mandiri ITS dengan fokus saintek, matematika, dan logika",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter ITS: matematika, fisika terapan, dan problem solving teknik.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "smup-unpad-100",
+    slug: "smup-unpad-100",
+    title: "SMUP UNPAD - Full 100 Soal",
+    subtitle: "Paket mandiri UNPAD untuk latihan lintas prodi dan pembahasan lengkap",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter UNPAD: literasi, penalaran umum, dan TKA kontekstual.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "um-undip-100",
+    slug: "um-undip-100",
+    title: "UM UNDIP - Full 100 Soal",
+    subtitle: "Paket mandiri UNDIP berbasis TPS, literasi, dan TKA campuran",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter UNDIP: ketelitian bacaan, konsep dasar, dan waktu pengerjaan ketat.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "smub-ub-100",
+    slug: "smub-ub-100",
+    title: "SMUB UB - Full 100 Soal",
+    subtitle: "Paket mandiri Universitas Brawijaya dengan 100 soal dan pembahasan",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter UB: TPS, literasi, TKA, dan soal campuran berbasis konteks.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "mandiri-unhas-100",
+    slug: "mandiri-unhas-100",
+    title: "Mandiri UNHAS - Full 100 Soal",
+    subtitle: "Paket mandiri UNHAS untuk persiapan komprehensif lintas subtes",
+    soalCount: 100,
+    durasiMenit: 120,
+    pola: "Karakter UNHAS: penalaran, literasi, dan TKA dasar untuk berbagai rumpun.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+];
+
+export const tryoutPaket: TryoutPaket[] = [
+  {
+    id: "paket-1",
+    slug: "paket-1",
+    title: "Paket UM Mandiri PTN - Set 1",
+    subtitle: "TPS + TKA - kompilasi pola ujian mandiri PTN 2023-2025",
+    soalCount: 120,
+    durasiMenit: 150,
+    pola: "SIMAK UI, SM-ITB, UTUL UGM, SMUP UNPAD, dan kampus lain.",
+    akses: "gratis",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "paket-2",
+    slug: "paket-2",
+    title: "Paket UM Mandiri PTN - Set 2",
+    subtitle: "Paket Ultra 2 dengan distribusi soal baru dan variasi HOTS lebih tinggi",
+    soalCount: 120,
+    durasiMenit: 150,
+    pola: "Multi-kampus sesuai folder SOAL UM.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  ...kampusTryoutPaket,
+];
+
+export type TryoutQuestion = {
+  id: string;
+  nomor: number;
+  bagian: string;
+  tingkat: "MUDAH" | "SEDANG" | "HOTS";
+  pertanyaan: string;
+  opsi: Record<"A" | "B" | "C" | "D" | "E", string>;
+  kunci: "A" | "B" | "C" | "D" | "E";
+  pembahasan: string;
+};
+
+export const soalPaket1: TryoutQuestion[] = soalUmPaket1;
+export const soalPaket2: TryoutQuestion[] = soalUmPaket2;
+
+export const soalPaketById: Record<string, TryoutQuestion[]> = {
+  "paket-1": soalPaket1,
+  "paket-2": soalPaket2,
+  ...soalUm10PtnPaket,
+};
