@@ -76,3 +76,4 @@ Next.js 16, React 19, Tailwind CSS 4, TypeScript, lucide-react.
 ## Integrasi Berikutnya
 
 Supabase Auth + Postgres + RLS, Midtrans Snap, AI tutor server-side, WhatsApp reminder worker, pipeline konten SOAL UM, dan observability.
+"# pastilulus" 
