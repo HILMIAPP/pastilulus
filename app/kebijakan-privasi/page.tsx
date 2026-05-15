@@ -19,8 +19,8 @@ export default function KebijakanPrivasiPage() {
             preferensi reminder untuk menyediakan pengalaman belajar yang lebih personal.
           </p>
           <p>
-            Untuk pembayaran, {site.name} dapat membagikan data transaksi minimum kepada penyedia pembayaran seperti
-            Midtrans, misalnya nama paket, nominal, order ID, email, dan status pembayaran.
+            Untuk pembayaran, {site.name} dapat membagikan data transaksi minimum kepada penyedia pembayaran resmi,
+            misalnya nama paket, nominal, order ID, email, dan status pembayaran.
           </p>
           <p>
             Data pengguna tidak dijual kepada pihak ketiga. Integrasi pembayaran, analitik, reminder, dan AI tutor akan

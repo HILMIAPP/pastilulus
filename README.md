@@ -76,4 +76,39 @@ Next.js 16, React 19, Tailwind CSS 4, TypeScript, lucide-react.
 ## Integrasi Berikutnya
 
 Supabase Auth + Postgres + RLS, Midtrans Snap, AI tutor server-side, WhatsApp reminder worker, pipeline konten SOAL UM, dan observability.
+
+## Admin production mode
+
+Admin portal sudah punya fallback mock agar UI tetap bisa dicoba lokal. Untuk membuat semua fitur admin memakai data produksi:
+
+1. Jalankan `docs/SUPABASE_SCHEMA_V2_RUN_THIS.sql` di Supabase SQL editor.
+2. Jalankan `docs/ADMIN_PRODUCTION_SCHEMA.sql`.
+3. Isi env server-only:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+4. Pastikan user admin punya `profiles.role = 'admin'` atau `profiles.role = 'super_admin'`.
+
+Setelah itu `/admin` akan membaca data dari tabel produksi:
+
+- `payment_transactions`
+- `promo_codes`
+- `affiliate_partners`
+- `site_content`
+- `blog_posts`
+- `profiles`
+- `questions`
+
+Checkout akan mencatat order ke `payment_transactions`, webhook Midtrans akan mengubah status transaksi, membuat/memperbarui subscription, dan menaikkan `profiles.tier` saat pembayaran berhasil.
+
+## Production ERD
+
+Dokumen ERD publik tersedia di `docs/PRODUCTION_ERD_PUBLIC.md`.
+Checklist kesiapan publish tersedia di `docs/PUBLISH_READINESS_CHECKLIST.md`.
+Owner launch gates tersedia di `docs/OWNER_PUBLIC_LAUNCH_GATES.md`.
+
+Untuk hardening schema sesuai ERD publik, jalankan setelah schema utama:
+
+1. `docs/SUPABASE_SCHEMA_V2_RUN_THIS.sql`
+2. `docs/ADMIN_PRODUCTION_SCHEMA.sql`
+3. `docs/PRODUCTION_ERD_HARDENING.sql`
 "# pastilulus" 

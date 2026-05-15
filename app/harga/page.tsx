@@ -84,8 +84,8 @@ export default function HargaPage() {
           ))}
         </div>
         <p className="mt-10 text-center text-xs text-slate-500">
-          Pembayaran diproses melalui Midtrans Snap saat produksi. Dengan melanjutkan pembayaran, pengguna menyetujui
-          Syarat Layanan dan Kebijakan Pembayaran {site.name}.
+          Pembayaran diproses melalui kanal pembayaran resmi. Dengan melanjutkan pembayaran, pengguna menyetujui Syarat
+          Layanan dan Kebijakan Pembayaran {site.name}.
         </p>
       </main>
       <SiteFooter />

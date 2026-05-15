@@ -21,7 +21,7 @@ const sections = [
   },
   {
     title: "4. Pembayaran dan aktivasi paket",
-    body: `Pembayaran paket berbayar diproses melalui penyedia pembayaran pihak ketiga, termasuk Midtrans saat produksi. Akses paket aktif setelah pembayaran terkonfirmasi oleh sistem. ${site.name} dapat menolak, membatalkan, atau meninjau transaksi yang terindikasi tidak sah.`,
+    body: `Pembayaran paket berbayar diproses melalui penyedia pembayaran pihak ketiga resmi. Akses paket aktif setelah pembayaran terkonfirmasi oleh sistem. ${site.name} dapat menolak, membatalkan, atau meninjau transaksi yang terindikasi tidak sah.`,
   },
   {
     title: "5. Perubahan fitur dan harga",
@@ -60,7 +60,7 @@ export default function SyaratLayananPage() {
         <h1 className="mt-3 text-3xl font-black text-slate-950">Syarat Layanan</h1>
         <p className="mt-4 max-w-3xl leading-relaxed text-slate-600">
           Dokumen ini mengatur penggunaan {site.fullName}. Versi ini disiapkan untuk alur layanan digital dan
-          pembayaran Midtrans, serta akan diperbarui sebelum peluncuran produksi penuh.
+          pembayaran online, serta akan diperbarui sebelum peluncuran produksi penuh.
         </p>
 
         <div className="mt-8 space-y-4">

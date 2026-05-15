@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, CreditCard, ExternalLink, ShieldCheck } from "lucide-react";
+import { BadgePercent, CheckCircle2, CreditCard, ExternalLink, Handshake, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { getBillingPlan } from "@/lib/billing";
 import { site } from "@/lib/site-config";
@@ -12,8 +12,11 @@ export function PaymentCheckout() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = getBillingPlan(searchParams.get("paket"));
+  const initialAffiliateCode = searchParams.get("ref") ?? searchParams.get("affiliate") ?? searchParams.get("aff") ?? "";
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeRefund, setAgreeRefund] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [affiliateCode, setAffiliateCode] = useState(initialAffiliateCode);
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
 
   const canPay = agreeTerms && agreeRefund;
@@ -24,8 +27,7 @@ export function PaymentCheckout() {
         <p className="text-sm font-black uppercase tracking-wide text-[#0A66FF]">Checkout</p>
         <h1 className="mt-3 text-3xl font-black text-slate-950">Aktifkan Paket {plan.name}</h1>
         <p className="mt-3 max-w-2xl leading-relaxed text-slate-600">
-          {site.name} menggunakan alur pembayaran Midtrans Snap. Pada lingkungan pengembangan, transaksi diarahkan ke
-          status simulasi internal tanpa memproses pembayaran nyata.
+          Periksa paket, masukkan kode bila ada, lalu lanjutkan ke halaman pembayaran aman untuk menyelesaikan aktivasi.
         </p>
 
         <div className="mt-8 grid gap-4">
@@ -34,7 +36,7 @@ export function PaymentCheckout() {
             items={[
               "Pastikan paket, harga, dan email akun sudah benar.",
               "Akses paket aktif setelah pembayaran dikonfirmasi oleh sistem.",
-              "Gunakan metode pembayaran resmi yang tampil di halaman Midtrans Snap.",
+              "Gunakan metode pembayaran resmi yang tampil di halaman pembayaran.",
             ]}
           />
           <PolicyCard
@@ -98,6 +100,40 @@ export function PaymentCheckout() {
           <p className="mt-1 text-xs font-semibold text-slate-500">Tagihan {plan.cadence}</p>
         </div>
 
+        <div className="mt-5 grid gap-3">
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-800">
+              <BadgePercent size={16} className="text-blue-700" />
+              Kode promo
+            </span>
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
+              placeholder="Contoh: HEMATUM"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              autoComplete="off"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-800">
+              <Handshake size={16} className="text-blue-700" />
+              Kode affiliate
+            </span>
+            <input
+              type="text"
+              value={affiliateCode}
+              onChange={(event) => setAffiliateCode(event.target.value.toUpperCase())}
+              placeholder="Contoh: PARTNER01"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              autoComplete="off"
+            />
+          </label>
+          <p className="text-xs leading-relaxed text-slate-500">
+            Kode promo dan affiliate dicatat bersama transaksi untuk divalidasi sistem.
+          </p>
+        </div>
+
         <ul className="mt-5 space-y-3 text-sm font-semibold text-slate-700">
           {plan.features.map((feature) => (
             <li key={feature} className="flex gap-2">
@@ -115,24 +151,27 @@ export function PaymentCheckout() {
             const response = await fetch("/api/payments/snap-token", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ planId: plan.id }),
+              body: JSON.stringify({
+                planId: plan.id,
+                promoCode: promoCode.trim() || undefined,
+                affiliateCode: affiliateCode.trim() || undefined,
+              }),
             });
             const data = (await response.json()) as { redirectUrl?: string };
             router.push(data.redirectUrl ?? "/pembayaran/status?status=pending");
           }}
           className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {isCreatingPayment ? "Menyiapkan pembayaran..." : "Lanjut ke Midtrans Snap"} <ExternalLink size={16} />
+          {isCreatingPayment ? "Menyiapkan pembayaran..." : "Lanjutkan pembayaran"} <ExternalLink size={16} />
         </button>
 
         <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
           <p className="flex items-center gap-2 text-sm font-black text-blue-950">
             <ShieldCheck size={17} />
-            Mode pengembangan
+            Pembayaran aman
           </p>
           <p className="mt-2 text-xs leading-relaxed text-blue-900">
-            Endpoint saat ini mengembalikan respons simulasi. Saat kredensial Midtrans aktif, gunakan Snap token dari
-            server dan verifikasi webhook.
+            Detail transaksi dibuat dari server, lalu status pembayaran diverifikasi otomatis sebelum paket aktif.
           </p>
         </div>
       </aside>

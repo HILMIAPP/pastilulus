@@ -5,9 +5,17 @@ import { StudentRunningBanner } from "@/components/student-running-banner";
 import { StudentStatGrid } from "@/components/student-stat-grid";
 import { StudentTryoutCta } from "@/components/student-tryout-cta";
 import { StudentOnboardingSummary } from "@/components/student-onboarding-summary";
+import { StudentTransactionCard } from "@/components/student-transaction-card";
 import type { AppSession } from "@/lib/session-codec";
+import type { StudentPaymentTransaction } from "@/lib/student-transactions";
 
-export function StudentDashboard({ session }: { session: AppSession | null }) {
+export function StudentDashboard({
+  session,
+  transactions,
+}: {
+  session: AppSession | null;
+  transactions: StudentPaymentTransaction[];
+}) {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
       <style>{`
@@ -32,6 +40,7 @@ export function StudentDashboard({ session }: { session: AppSession | null }) {
         </div>
 
         <StudentOnboardingSummary />
+        <StudentTransactionCard transactions={transactions} />
         <StudentPromoSlider />
         <StudentStatGrid completed={0} avgScore={0} />
 

@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { isStudentNavActive, studentNavItems } from "@/components/student-nav-data";
+import { isStudentNavActive, studentAccountNavItems, studentNavItems } from "@/components/student-nav-data";
 
 export function StudentMobileNav() {
   const pathname = usePathname();
+  const mobileItems = [studentNavItems[0], studentNavItems[1], studentNavItems[3], studentAccountNavItems[0]];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex justify-around border-t border-slate-200 bg-white p-2 md:hidden">
-      {studentNavItems.slice(0, 4).map((item) => {
+      {mobileItems.map((item) => {
         const Icon = item.icon;
         const active = isStudentNavActive(pathname, item.href);
 
@@ -22,7 +23,7 @@ export function StudentMobileNav() {
             }`}
           >
             <Icon size={22} />
-            <span className="mt-1">{item.label === "Simulasi Ujian" ? "Tryout" : item.label}</span>
+            <span className="mt-1">{getMobileLabel(item.label)}</span>
           </Link>
         );
       })}
@@ -30,3 +31,8 @@ export function StudentMobileNav() {
   );
 }
 
+function getMobileLabel(label: string) {
+  if (label === "Simulasi Ujian") return "Tryout";
+  if (label === "Atur Profil") return "Profil";
+  return label;
+}

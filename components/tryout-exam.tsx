@@ -126,7 +126,24 @@ export function TryoutExam({ paket }: Props) {
         createdAt: new Date().toISOString(),
       }),
     );
-  }, [computeScore, paket.title, submitted]);
+
+    void fetch("/api/tryout/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paket: {
+          slug: paket.slug,
+          title: paket.title,
+          subtitle: paket.subtitle,
+          durasiMenit: paket.durasiMenit,
+          akses: paket.akses,
+        },
+        result: latest,
+        questions: soalList,
+        answers,
+      }),
+    });
+  }, [answers, computeScore, paket, soalList, submitted]);
 
   const result = submitted ? computeScore() : null;
   const rationalization = result ? calculateRationalization(result) : null;

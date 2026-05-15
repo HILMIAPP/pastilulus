@@ -5,6 +5,8 @@ import {
   FileText,
   Home,
   PlayCircle,
+  ReceiptText,
+  Settings,
   Sparkles,
   Target,
 } from "lucide-react";
@@ -20,6 +22,11 @@ export const studentNavItems = [
   { href: "/harga", label: "Upgrade Pro", icon: Sparkles },
 ] as const;
 
+export const studentAccountNavItems = [
+  { href: "/siswa/profil", label: "Atur Profil", icon: Settings },
+  { href: "/siswa/transaksi", label: "Riwayat Transaksi", icon: ReceiptText },
+] as const;
+
 export function isStudentNavActive(pathname: string, href: string) {
   if (href === "/siswa") return pathname === "/siswa";
   if (href === "/siswa/target") return pathname.startsWith("/siswa/target");
@@ -28,6 +35,8 @@ export function isStudentNavActive(pathname: string, href: string) {
   if (href === "/siswa/rasionalisasi") return pathname.startsWith("/siswa/rasionalisasi");
   if (href === "/siswa/info-ptn") return pathname.startsWith("/siswa/info-ptn");
   if (href === "/siswa/jadwal") return pathname.startsWith("/siswa/jadwal");
+  if (href === "/siswa/profil") return pathname.startsWith("/siswa/profil");
+  if (href === "/siswa/transaksi") return pathname.startsWith("/siswa/transaksi");
   if (href === "/harga") return pathname === "/harga";
   return false;
 }

@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { normalizePaymentStatus, paymentStatusCopy } from "@/lib/payment-status";
+import { site } from "@/lib/site-config";
 
 type Props = {
   searchParams: Promise<{ status?: string; order_id?: string }>;
@@ -44,12 +45,22 @@ export default async function PaymentStatusPage({ searchParams }: Props) {
               Buka dashboard
             </Link>
             <Link
+              href="/siswa/transaksi"
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50"
+            >
+              Riwayat transaksi
+            </Link>
+            <Link
               href="/harga"
               className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50"
             >
               Kembali ke harga
             </Link>
           </div>
+          <p className="mx-auto mt-6 max-w-xl rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold leading-relaxed text-slate-600">
+            Jika pembayaran sudah berhasil tetapi paket belum aktif, hubungi {site.emailKontak} dengan email akun dan
+            Order ID.
+          </p>
         </section>
       </main>
       <SiteFooter />

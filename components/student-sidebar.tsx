@@ -6,7 +6,7 @@ import { LogOut } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { signOutAction } from "@/lib/auth-actions";
 import type { AppSession } from "@/lib/session-codec";
-import { isStudentNavActive, studentNavItems } from "@/components/student-nav-data";
+import { isStudentNavActive, studentAccountNavItems, studentNavItems } from "@/components/student-nav-data";
 
 export function StudentSidebar({ session }: { session: AppSession | null }) {
   const pathname = usePathname();
@@ -32,24 +32,19 @@ export function StudentSidebar({ session }: { session: AppSession | null }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-4">
-        {studentNavItems.map((item) => {
-          const active = isStudentNavActive(pathname, item.href);
-          const Icon = item.icon;
+      <nav className="flex-1 space-y-5 overflow-y-auto px-4 pb-4">
+        <div className="space-y-1">
+          {studentNavItems.map((item) => (
+            <SidebarLink key={item.label} item={item} pathname={pathname} />
+          ))}
+        </div>
 
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold transition ${
-                active ? "bg-[#E6F0FF] text-[#0D1B2A]" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Icon size={18} className={active ? "text-[#0A66FF]" : "text-slate-400"} />
-              {item.label}
-            </Link>
-          );
-        })}
+        <div className="space-y-1 border-t border-slate-100 pt-4">
+          <p className="px-4 text-[10px] font-black uppercase tracking-wide text-slate-400">Akun</p>
+          {studentAccountNavItems.map((item) => (
+            <SidebarLink key={item.label} item={item} pathname={pathname} />
+          ))}
+        </div>
       </nav>
 
       <div className="mx-4 mb-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
@@ -74,5 +69,28 @@ export function StudentSidebar({ session }: { session: AppSession | null }) {
         </form>
       </div>
     </aside>
+  );
+}
+
+function SidebarLink({
+  item,
+  pathname,
+}: {
+  item: (typeof studentNavItems)[number] | (typeof studentAccountNavItems)[number];
+  pathname: string;
+}) {
+  const active = isStudentNavActive(pathname, item.href);
+  const Icon = item.icon;
+
+  return (
+    <Link
+      href={item.href}
+      className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold transition ${
+        active ? "bg-[#E6F0FF] text-[#0D1B2A]" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+      }`}
+    >
+      <Icon size={18} className={active ? "text-[#0A66FF]" : "text-slate-400"} />
+      {item.label}
+    </Link>
   );
 }

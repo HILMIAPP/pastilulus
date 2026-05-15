@@ -10,7 +10,7 @@ const policies = [
   {
     title: "Metode pembayaran",
     body:
-      "Pada produksi, pembayaran paket berbayar diproses melalui Midtrans Snap atau penyedia pembayaran resmi lain yang ditampilkan saat checkout. Metode dapat mencakup QRIS, virtual account, kartu, e-wallet, atau kanal lain yang tersedia.",
+      "Pada produksi, pembayaran paket berbayar diproses melalui penyedia pembayaran resmi yang ditampilkan saat checkout. Metode dapat mencakup QRIS, virtual account, kartu, e-wallet, atau kanal lain yang tersedia.",
   },
   {
     title: "Aktivasi paket",

@@ -6,7 +6,7 @@ export const paymentStatusCopy = {
   },
   pending: {
     title: "Pembayaran menunggu",
-    desc: "Transaksi sudah dibuat, tetapi pembayaran belum terkonfirmasi. Selesaikan instruksi dari Midtrans sebelum batas waktu.",
+    desc: "Transaksi sudah dibuat, tetapi pembayaran belum terkonfirmasi. Selesaikan instruksi pembayaran sebelum batas waktu.",
     tone: "amber",
   },
   failed: {

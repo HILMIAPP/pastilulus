@@ -44,3 +44,19 @@ body {
 .fade-section {
   animation: fade-in-section 0.35s ease-out both;
 }
+
+.field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.field:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.28);
+}

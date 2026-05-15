@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function safeCompare(left: string, right: string) {
   const leftBuffer = Buffer.from(left);
@@ -27,15 +28,100 @@ export async function POST(request: Request) {
     return Response.json({ received: false, message: "Invalid Midtrans signature." }, { status: 401 });
   }
 
-  // TODO production:
-  // 1. Fetch/confirm transaction status to Midtrans when needed.
-  // 2. Update order, payment, and user subscription in database.
-  // 3. Make this handler idempotent by order_id.
+  const orderId = String(payload.order_id ?? "");
+  const transactionStatus = String(payload.transaction_status ?? "");
+  const fraudStatus = String(payload.fraud_status ?? "");
+  const isPaid = (transactionStatus === "settlement" || transactionStatus === "capture") && fraudStatus !== "deny";
+  const status = isPaid ? "paid" : transactionStatus === "expire" ? "expired" : transactionStatus === "deny" || transactionStatus === "cancel" ? "failed" : "pending";
+  const supabaseAdmin = createAdminClient();
+
+  if (supabaseAdmin && orderId) {
+    const { data: existingTransaction } = await supabaseAdmin
+      .from("payment_transactions")
+      .select("status,promo_code,affiliate_code,amount,user_id,plan")
+      .eq("order_id", orderId)
+      .maybeSingle<{
+        status: string;
+        promo_code: string | null;
+        affiliate_code: string | null;
+        amount: number;
+        user_id: string | null;
+        plan: "belajar" | "pro";
+      }>();
+    const shouldApplyPaidSideEffects = isPaid && existingTransaction?.status !== "paid";
+
+    const { data: transaction } = await supabaseAdmin
+      .from("payment_transactions")
+      .update({
+        status,
+        payment_method: payload.payment_type ? String(payload.payment_type) : null,
+        midtrans_transaction_id: payload.transaction_id ? String(payload.transaction_id) : null,
+        raw_payload: payload,
+        paid_at: isPaid ? String(payload.transaction_time ?? new Date().toISOString()) : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("order_id", orderId)
+      .select("user_id,plan,amount,promo_code,affiliate_code")
+      .maybeSingle();
+
+    if (shouldApplyPaidSideEffects && transaction?.promo_code) {
+      const { data: promo } = await supabaseAdmin
+        .from("promo_codes")
+        .select("used_count")
+        .eq("code", transaction.promo_code)
+        .maybeSingle<{ used_count: number }>();
+
+      await supabaseAdmin
+        .from("promo_codes")
+        .update({ used_count: (promo?.used_count ?? 0) + 1, updated_at: new Date().toISOString() })
+        .eq("code", transaction.promo_code);
+    }
+
+    if (shouldApplyPaidSideEffects && transaction?.affiliate_code) {
+      const { data: affiliate } = await supabaseAdmin
+        .from("affiliate_partners")
+        .select("conversion_count,revenue_amount")
+        .eq("code", transaction.affiliate_code)
+        .maybeSingle<{ conversion_count: number; revenue_amount: number }>();
+
+      await supabaseAdmin
+        .from("affiliate_partners")
+        .update({
+          conversion_count: (affiliate?.conversion_count ?? 0) + 1,
+          revenue_amount: (affiliate?.revenue_amount ?? 0) + transaction.amount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("code", transaction.affiliate_code);
+    }
+
+    if (shouldApplyPaidSideEffects && transaction?.user_id) {
+      const periodStart = new Date();
+      const periodEnd = new Date(periodStart);
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+      await supabaseAdmin.from("subscriptions").upsert(
+        {
+          user_id: transaction.user_id,
+          plan: transaction.plan,
+          status: "active",
+          midtrans_order_id: orderId,
+          amount: transaction.amount,
+          current_period_start: periodStart.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "midtrans_order_id" },
+      );
+
+      await supabaseAdmin.from("profiles").update({ tier: transaction.plan, updated_at: new Date().toISOString() }).eq("id", transaction.user_id);
+    }
+  }
+
   return Response.json({
     received: true,
-    orderId: payload.order_id ?? null,
-    transactionStatus: payload.transaction_status ?? null,
-    fraudStatus: payload.fraud_status ?? null,
-    note: "Webhook handler belum mengaktifkan paket. Aktifkan akses hanya setelah verifikasi signature dan status transaksi.",
+    orderId,
+    transactionStatus,
+    fraudStatus,
+    status,
   });
 }

@@ -1,9 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { clearSession } from "@/lib/session";
+import { clearSession, getRoleForEmail, getTierForRole, setSession, type AppSession } from "@/lib/session";
 import { createAppSessionFromUser } from "@/lib/auth-session";
-import { site } from "@/lib/site-config";
+import { site, whiteLabel } from "@/lib/site-config";
 import { createClient } from "@/lib/supabase/server";
 
 function normalizeEmail(value: FormDataEntryValue | null) {
@@ -27,6 +27,16 @@ function validateCredentials(email: string, password: string) {
   return null;
 }
 
+function isDevelopmentAdminLogin(email: string, password: string) {
+  const devPassword = process.env.DEV_ADMIN_PASSWORD;
+  const allowedAdminEmails = [
+    whiteLabel.auth.adminEmail.toLowerCase(),
+    whiteLabel.auth.superAdminEmail.toLowerCase(),
+  ];
+
+  return process.env.NODE_ENV !== "production" && Boolean(devPassword) && password === devPassword && allowedAdminEmails.includes(email);
+}
+
 export async function signInAction(formData: FormData) {
   const email = normalizeEmail(formData.get("email"));
   const password = String(formData.get("password") ?? "");
@@ -34,6 +44,21 @@ export async function signInAction(formData: FormData) {
 
   if (error) {
     redirect(`/masuk?error=${encodeURIComponent(error)}`);
+  }
+
+  if (isDevelopmentAdminLogin(email, password)) {
+    const role = getRoleForEmail(email);
+    const session: AppSession = {
+      userId: `dev-${role}`,
+      name: role === "super_admin" ? "Super Admin" : "Admin",
+      email,
+      role,
+      tier: getTierForRole(role),
+      createdAt: Date.now(),
+    };
+
+    await setSession(session);
+    redirect("/admin");
   }
 
   const supabase = await createClient();

@@ -1,10 +1,13 @@
 import AdminPortal from "@/components/admin-portal";
+import { fetchAdminPortalData } from "@/lib/admin-portal-data";
 
 export const metadata = {
   title: "Admin Portal",
   robots: { index: false, follow: false },
 };
 
-export default function AdminPage() {
-  return <AdminPortal />;
+export default async function AdminPage() {
+  const data = await fetchAdminPortalData();
+
+  return <AdminPortal initialData={data} />;
 }
