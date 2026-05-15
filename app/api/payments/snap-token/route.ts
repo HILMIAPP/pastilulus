@@ -30,8 +30,8 @@ export async function POST(request: Request) {
       orderId,
       planId: plan.id,
       amount: plan.price,
-      redirectUrl: `/pembayaran/status?status=success&order_id=${orderId}`,
-      message: "Midtrans env belum diisi. Sistem mengembalikan status simulasi pengembangan.",
+      redirectUrl: `/pembayaran/status?status=pending&order_id=${orderId}`,
+      message: "Midtrans env belum diisi. Sistem mengembalikan status pending pengembangan.",
     });
   }
 
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
           }
         : undefined,
       callbacks: {
-        finish: `${appUrl}/pembayaran/status?status=success&order_id=${orderId}`,
+        finish: `${appUrl}/pembayaran/status?status=pending&order_id=${orderId}`,
       },
       custom_field1: plan.id,
       custom_field2: session?.userId,

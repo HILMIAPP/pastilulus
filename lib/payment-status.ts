@@ -1,12 +1,12 @@
 export const paymentStatusCopy = {
   success: {
     title: "Pembayaran berhasil",
-    desc: "Terima kasih. Paket akan aktif setelah sistem mengonfirmasi status transaksi.",
+    desc: "Terima kasih. Pembayaran sudah terkonfirmasi dan paket akan diaktifkan oleh sistem.",
     tone: "emerald",
   },
   pending: {
     title: "Pembayaran menunggu",
-    desc: "Selesaikan instruksi pembayaran dari Midtrans sebelum batas waktu yang ditentukan.",
+    desc: "Transaksi sudah dibuat, tetapi pembayaran belum terkonfirmasi. Selesaikan instruksi dari Midtrans sebelum batas waktu.",
     tone: "amber",
   },
   failed: {
