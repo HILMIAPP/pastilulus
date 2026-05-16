@@ -9,8 +9,11 @@ import {
   createAffiliatePartnerAction,
   createBlogPostAction,
   createPromoCodeAction,
+  replyCrmConversationAction,
   saveLandingHeroAction,
+  seedSeoBlogPostsAction,
   syncPaymentTransactionAction,
+  updateCrmConversationStatusAction,
   updateQuestionStatusAction,
 } from "@/lib/admin-actions";
 import type { AdminPortalData } from "@/lib/admin-portal-data";
@@ -32,6 +35,7 @@ import {
   LayoutDashboard,
   LogOut,
   Megaphone,
+  MessageSquare,
   Menu,
   Newspaper,
   Plus,
@@ -40,6 +44,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Sparkles,
   TrendingUp,
   UserCog,
   Users,
@@ -47,7 +52,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-type AdminTab = "dashboard" | "users" | "soal" | "content" | "ptn" | "billing" | "promo" | "broadcast" | "settings";
+type AdminTab = "dashboard" | "users" | "soal" | "content" | "blog" | "crm" | "ptn" | "billing" | "promo" | "broadcast" | "settings";
 type PaymentStatus = "paid" | "pending" | "expired" | "failed";
 type SoalStatus = "review" | "active" | "rejected";
 
@@ -247,7 +252,9 @@ const ADMIN_NAV: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[]
   { id: "promo", label: "Promo & Affiliate", icon: BadgePercent },
   { id: "users", label: "Data Pengguna", icon: Users },
   { id: "soal", label: "Review Soal", icon: Database },
+  { id: "crm", label: "CRM Chat", icon: MessageSquare },
   { id: "content", label: "Konten Website", icon: Newspaper },
+  { id: "blog", label: "Blog & SEO", icon: FileText },
   { id: "ptn", label: "Manajemen PTN", icon: GraduationCap },
   { id: "broadcast", label: "Broadcast Notif", icon: Megaphone },
   { id: "settings", label: "Admin Settings", icon: Settings },
@@ -259,7 +266,10 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
   const users = initialData.users?.length ? initialData.users : adminUsers;
   const landingContent = initialData.landingSections?.length ? initialData.landingSections : landingSections;
   const blogContent = initialData.blogPosts?.length ? initialData.blogPosts : blogPosts;
+  const initialCrmConversations = initialData.crmConversations ?? [];
   const [transactions, setTransactions] = useState(initialData.transactions?.length ? initialData.transactions : initialTransactions);
+  const [crmConversations, setCrmConversations] = useState(initialCrmConversations);
+  const [selectedCrmId, setSelectedCrmId] = useState(initialCrmConversations[0]?.id ?? "");
   const [selectedTransactionId, setSelectedTransactionId] = useState((initialData.transactions?.[0] ?? initialTransactions[0])?.id ?? "");
   const [selectedUserId, setSelectedUserId] = useState((initialData.users?.[0] ?? adminUsers[0])?.id ?? "");
   const [soalData, setSoalData] = useState(initialSoal);
@@ -267,7 +277,15 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
   const [promos, setPromos] = useState(initialData.promos?.length ? initialData.promos : initialPromos);
   const [affiliates, setAffiliates] = useState(initialData.affiliates?.length ? initialData.affiliates : initialAffiliates);
   const [newPromoCode, setNewPromoCode] = useState("");
+  const [newPromoDiscountType, setNewPromoDiscountType] = useState<"nominal" | "percent">("nominal");
+  const [newPromoDiscountValue, setNewPromoDiscountValue] = useState("5000");
+  const [newPromoUsageLimit, setNewPromoUsageLimit] = useState("100");
+  const [newPromoExpiresAt, setNewPromoExpiresAt] = useState("2026-07-31");
+  const [newPromoStatus, setNewPromoStatus] = useState<"draft" | "published">("published");
   const [newAffiliateCode, setNewAffiliateCode] = useState("");
+  const [newAffiliateName, setNewAffiliateName] = useState("");
+  const [newAffiliateCommission, setNewAffiliateCommission] = useState("10");
+  const [newAffiliateStatus, setNewAffiliateStatus] = useState<"draft" | "published">("published");
 
   const selectedTransaction = transactions.find((trx) => trx.id === selectedTransactionId) ?? transactions[0];
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0];
@@ -275,6 +293,7 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
   const paidCount = transactions.filter((trx) => trx.status === "paid").length;
   const pendingCount = transactions.filter((trx) => trx.status === "pending").length;
   const pendingSoal = soalData.filter((soal) => soal.status === "review").length;
+  const selectedCrmConversation = crmConversations.find((conversation) => conversation.id === selectedCrmId) ?? crmConversations[0];
 
   const filteredUserTransactions = useMemo(
     () => transactions.filter((trx) => trx.userId === selectedUser?.id),
@@ -300,23 +319,83 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
   const createPromo = async () => {
     const code = newPromoCode.trim().toUpperCase();
     if (!code) return;
+    const discountValue = Number(newPromoDiscountValue) || 0;
+    const usageLimit = Number(newPromoUsageLimit) || 0;
+    const displayValue =
+      newPromoDiscountType === "percent"
+        ? `${discountValue}%`
+        : new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 })
+            .format(discountValue)
+            .replace(/\s/g, " ");
+    const expiresLabel = newPromoExpiresAt
+      ? new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(newPromoExpiresAt))
+      : "-";
     setPromos((prev) => [
-      { id: `promo-${Date.now()}`, code, type: "Diskon nominal", value: "Rp 5.000", limit: 100, used: 0, expires: "31 Jul 2026", status: "draft" },
+      {
+        id: `promo-${Date.now()}`,
+        code,
+        type: newPromoDiscountType === "percent" ? "Diskon persen" : "Diskon nominal",
+        value: displayValue,
+        limit: usageLimit,
+        used: 0,
+        expires: expiresLabel,
+        status: newPromoStatus,
+      },
       ...prev,
     ]);
     setNewPromoCode("");
-    await createPromoCodeAction(code);
+    await createPromoCodeAction({
+      code,
+      discountType: newPromoDiscountType,
+      discountValue,
+      usageLimit,
+      expiresAt: newPromoExpiresAt,
+      status: newPromoStatus,
+    });
   };
 
   const createAffiliate = async () => {
     const code = newAffiliateCode.trim().toUpperCase();
     if (!code) return;
+    const commissionRate = Number(newAffiliateCommission) || 0;
+    const partnerName = newAffiliateName.trim() || "Partner Baru";
     setAffiliates((prev) => [
-      { id: `aff-${Date.now()}`, code, name: "Partner Baru", commission: "10%", clicks: 0, conversions: 0, revenue: "Rp 0", status: "draft" },
+      { id: `aff-${Date.now()}`, code, name: partnerName, commission: `${commissionRate}%`, clicks: 0, conversions: 0, revenue: "Rp 0", status: newAffiliateStatus },
       ...prev,
     ]);
     setNewAffiliateCode("");
-    await createAffiliatePartnerAction(code);
+    setNewAffiliateName("");
+    await createAffiliatePartnerAction({
+      code,
+      name: partnerName,
+      commissionRate,
+      status: newAffiliateStatus,
+    });
+  };
+
+  const replyCrm = async (conversationId: string, body: string) => {
+    const now = "Baru saja";
+    setCrmConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              status: "assigned",
+              lastMessageAt: now,
+              messages: [
+                ...conversation.messages,
+                { id: `local-${Date.now()}`, senderType: "admin", body, createdAt: now },
+              ],
+            }
+          : conversation,
+      ),
+    );
+    await replyCrmConversationAction({ conversationId, body });
+  };
+
+  const updateCrmStatus = async (conversationId: string, status: "waiting_admin" | "assigned" | "closed") => {
+    setCrmConversations((prev) => prev.map((conversation) => (conversation.id === conversationId ? { ...conversation, status } : conversation)));
+    await updateCrmConversationStatusAction({ conversationId, status });
   };
 
   return (
@@ -361,9 +440,25 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
               promos={promos}
               affiliates={affiliates}
               newPromoCode={newPromoCode}
+              newPromoDiscountType={newPromoDiscountType}
+              newPromoDiscountValue={newPromoDiscountValue}
+              newPromoUsageLimit={newPromoUsageLimit}
+              newPromoExpiresAt={newPromoExpiresAt}
+              newPromoStatus={newPromoStatus}
               newAffiliateCode={newAffiliateCode}
+              newAffiliateName={newAffiliateName}
+              newAffiliateCommission={newAffiliateCommission}
+              newAffiliateStatus={newAffiliateStatus}
               onNewPromoCode={setNewPromoCode}
+              onNewPromoDiscountType={setNewPromoDiscountType}
+              onNewPromoDiscountValue={setNewPromoDiscountValue}
+              onNewPromoUsageLimit={setNewPromoUsageLimit}
+              onNewPromoExpiresAt={setNewPromoExpiresAt}
+              onNewPromoStatus={setNewPromoStatus}
               onNewAffiliateCode={setNewAffiliateCode}
+              onNewAffiliateName={setNewAffiliateName}
+              onNewAffiliateCommission={setNewAffiliateCommission}
+              onNewAffiliateStatus={setNewAffiliateStatus}
               onCreatePromo={createPromo}
               onCreateAffiliate={createAffiliate}
             />
@@ -386,7 +481,17 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
               onReject={rejectSoal}
             />
           )}
-          {activeTab === "content" && <ContentWebsiteView landingSections={landingContent} blogPosts={blogContent} />}
+          {activeTab === "crm" && (
+            <CrmChatView
+              conversations={crmConversations}
+              selectedConversation={selectedCrmConversation}
+              onSelectConversation={setSelectedCrmId}
+              onReply={replyCrm}
+              onUpdateStatus={updateCrmStatus}
+            />
+          )}
+          {activeTab === "content" && <ContentWebsiteView landingSections={landingContent} />}
+          {activeTab === "blog" && <BlogSeoView blogPosts={blogContent} />}
           {activeTab === "ptn" && <PtnView />}
           {activeTab === "broadcast" && <BroadcastView />}
           {activeTab === "settings" && <SettingsView />}
@@ -654,18 +759,50 @@ function PromoAffiliateView({
   promos,
   affiliates,
   newPromoCode,
+  newPromoDiscountType,
+  newPromoDiscountValue,
+  newPromoUsageLimit,
+  newPromoExpiresAt,
+  newPromoStatus,
   newAffiliateCode,
+  newAffiliateName,
+  newAffiliateCommission,
+  newAffiliateStatus,
   onNewPromoCode,
+  onNewPromoDiscountType,
+  onNewPromoDiscountValue,
+  onNewPromoUsageLimit,
+  onNewPromoExpiresAt,
+  onNewPromoStatus,
   onNewAffiliateCode,
+  onNewAffiliateName,
+  onNewAffiliateCommission,
+  onNewAffiliateStatus,
   onCreatePromo,
   onCreateAffiliate,
 }: {
   promos: typeof initialPromos;
   affiliates: typeof initialAffiliates;
   newPromoCode: string;
+  newPromoDiscountType: "nominal" | "percent";
+  newPromoDiscountValue: string;
+  newPromoUsageLimit: string;
+  newPromoExpiresAt: string;
+  newPromoStatus: "draft" | "published";
   newAffiliateCode: string;
+  newAffiliateName: string;
+  newAffiliateCommission: string;
+  newAffiliateStatus: "draft" | "published";
   onNewPromoCode: (value: string) => void;
+  onNewPromoDiscountType: (value: "nominal" | "percent") => void;
+  onNewPromoDiscountValue: (value: string) => void;
+  onNewPromoUsageLimit: (value: string) => void;
+  onNewPromoExpiresAt: (value: string) => void;
+  onNewPromoStatus: (value: "draft" | "published") => void;
   onNewAffiliateCode: (value: string) => void;
+  onNewAffiliateName: (value: string) => void;
+  onNewAffiliateCommission: (value: string) => void;
+  onNewAffiliateStatus: (value: "draft" | "published") => void;
   onCreatePromo: () => void;
   onCreateAffiliate: () => void;
 }) {
@@ -677,9 +814,40 @@ function PromoAffiliateView({
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950">
             <BadgePercent size={20} className="text-blue-600" /> Kode promo
           </h2>
-          <div className="mt-4 flex gap-2">
-            <input value={newPromoCode} onChange={(event) => onNewPromoCode(event.target.value.toUpperCase())} placeholder="Kode baru" className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" />
-            <button onClick={onCreatePromo} className="rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700">Tambah</button>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <Field label="Kode promo">
+              <input value={newPromoCode} onChange={(event) => onNewPromoCode(event.target.value.toUpperCase())} placeholder="HEMAT25" className="field" />
+            </Field>
+            <Field label="Status">
+              <select className="field" value={newPromoStatus} onChange={(event) => onNewPromoStatus(event.target.value as "draft" | "published")}>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+              </select>
+            </Field>
+            <Field label="Jenis diskon">
+              <select className="field" value={newPromoDiscountType} onChange={(event) => onNewPromoDiscountType(event.target.value as "nominal" | "percent")}>
+                <option value="nominal">Nominal rupiah</option>
+                <option value="percent">Persen</option>
+              </select>
+            </Field>
+            <Field label={newPromoDiscountType === "percent" ? "Besar diskon (%)" : "Besar diskon (Rp)"}>
+              <input
+                type="number"
+                min={0}
+                max={newPromoDiscountType === "percent" ? 100 : undefined}
+                value={newPromoDiscountValue}
+                onChange={(event) => onNewPromoDiscountValue(event.target.value)}
+                placeholder={newPromoDiscountType === "percent" ? "25" : "10000"}
+                className="field"
+              />
+            </Field>
+            <Field label="Kuota pemakai">
+              <input type="number" min={0} value={newPromoUsageLimit} onChange={(event) => onNewPromoUsageLimit(event.target.value)} placeholder="100" className="field" />
+            </Field>
+            <Field label="Berlaku sampai">
+              <input type="date" value={newPromoExpiresAt} onChange={(event) => onNewPromoExpiresAt(event.target.value)} className="field" />
+            </Field>
+            <button onClick={onCreatePromo} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700 md:col-span-2">Tambah kode promo</button>
           </div>
           <div className="mt-5 space-y-3">
             {promos.map((promo) => (
@@ -704,9 +872,23 @@ function PromoAffiliateView({
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950">
             <Handshake size={20} className="text-blue-600" /> Affiliate partner
           </h2>
-          <div className="mt-4 flex gap-2">
-            <input value={newAffiliateCode} onChange={(event) => onNewAffiliateCode(event.target.value.toUpperCase())} placeholder="Kode partner" className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" />
-            <button onClick={onCreateAffiliate} className="rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700">Tambah</button>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <Field label="Kode partner">
+              <input value={newAffiliateCode} onChange={(event) => onNewAffiliateCode(event.target.value.toUpperCase())} placeholder="KAKRINA" className="field" />
+            </Field>
+            <Field label="Nama partner">
+              <input value={newAffiliateName} onChange={(event) => onNewAffiliateName(event.target.value)} placeholder="Kak Rina Edu" className="field" />
+            </Field>
+            <Field label="Komisi (%)">
+              <input type="number" min={0} max={100} value={newAffiliateCommission} onChange={(event) => onNewAffiliateCommission(event.target.value)} placeholder="10" className="field" />
+            </Field>
+            <Field label="Status">
+              <select className="field" value={newAffiliateStatus} onChange={(event) => onNewAffiliateStatus(event.target.value as "draft" | "published")}>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+              </select>
+            </Field>
+            <button onClick={onCreateAffiliate} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700 md:col-span-2">Tambah partner</button>
           </div>
           <div className="mt-5 space-y-3">
             {affiliates.map((affiliate) => (
@@ -892,12 +1074,182 @@ function ReviewSoalView({
   );
 }
 
+function CrmChatView({
+  conversations,
+  selectedConversation,
+  onSelectConversation,
+  onReply,
+  onUpdateStatus,
+}: {
+  conversations: NonNullable<AdminPortalData["crmConversations"]>;
+  selectedConversation?: NonNullable<AdminPortalData["crmConversations"]>[number];
+  onSelectConversation: (id: string) => void;
+  onReply: (conversationId: string, body: string) => void;
+  onUpdateStatus: (conversationId: string, status: "waiting_admin" | "assigned" | "closed") => void;
+}) {
+  const [replyBody, setReplyBody] = useState("");
+  const openCount = conversations.filter((conversation) => conversation.status !== "closed").length;
+
+  const submitReply = async () => {
+    if (!selectedConversation || !replyBody.trim()) return;
+    const body = replyBody.trim();
+    setReplyBody("");
+    await onReply(selectedConversation.id, body);
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageTitle
+        title="CRM Chat"
+        description="Inbox percakapan dari bubble chat publik. Admin bisa membaca, membalas, dan menutup conversation."
+        action={<span className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">{openCount} open chat</span>}
+      />
+
+      {conversations.length ? (
+        <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 p-5">
+              <h2 className="font-black text-slate-950">Inbox</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Urut dari pesan terakhir.</p>
+            </div>
+            <div className="max-h-[640px] divide-y divide-slate-100 overflow-y-auto">
+              {conversations.map((conversation) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => onSelectConversation(conversation.id)}
+                  className={`block w-full p-5 text-left transition hover:bg-slate-50 ${
+                    selectedConversation?.id === conversation.id ? "bg-blue-50/70" : "bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black text-slate-950">{conversation.visitorName}</p>
+                      <p className="text-xs font-semibold text-slate-500">{conversation.visitorEmail}</p>
+                    </div>
+                    <CrmStatusBadge status={conversation.status} />
+                  </div>
+                  <p className="mt-3 line-clamp-2 text-sm font-semibold leading-relaxed text-slate-600">
+                    {conversation.messages.at(-1)?.body ?? "Belum ada pesan."}
+                  </p>
+                  <p className="mt-3 text-xs font-bold text-slate-400">
+                    {conversation.topic} - {conversation.lastMessageAt}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {selectedConversation ? (
+              <>
+                <div className="flex flex-col gap-3 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">{selectedConversation.visitorName}</h2>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      {selectedConversation.visitorEmail} - {selectedConversation.visitorPhone}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-slate-400">Source: {selectedConversation.sourcePage}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateStatus(selectedConversation.id, "assigned")}
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"
+                    >
+                      Assign
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateStatus(selectedConversation.id, "closed")}
+                      className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-[460px] space-y-3 overflow-y-auto bg-slate-50 p-5">
+                  {selectedConversation.messages.map((message) => {
+                    const isAdmin = message.senderType === "admin";
+                    const isBot = message.senderType === "bot";
+                    return (
+                      <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm font-semibold leading-relaxed ${
+                            isAdmin
+                              ? "bg-[#0A66FF] text-white"
+                              : isBot
+                                ? "bg-blue-50 text-blue-950"
+                                : "bg-white text-slate-700 shadow-sm"
+                          }`}
+                        >
+                          <p>{message.body}</p>
+                          <p className={`mt-2 text-[11px] font-bold ${isAdmin ? "text-blue-100" : "text-slate-400"}`}>
+                            {message.senderType} - {message.createdAt}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-slate-100 p-5">
+                  <Field label="Balasan admin">
+                    <textarea
+                      className="field min-h-28 resize-none"
+                      value={replyBody}
+                      onChange={(event) => setReplyBody(event.target.value)}
+                      placeholder="Tulis balasan untuk user..."
+                    />
+                  </Field>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {["Halo kak, bisa dibantu kirim email akun dan Order ID?", "Paket Belajar cocok untuk mulai tryout dan pembahasan.", "Untuk info deadline, kampus targetnya apa ya kak?"].map((template) => (
+                      <button
+                        key={template}
+                        type="button"
+                        onClick={() => setReplyBody(template)}
+                        className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                      >
+                        {template}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={submitReply}
+                    disabled={!replyBody.trim()}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0A66FF] px-5 py-3 text-sm font-black text-white hover:bg-[#0052D6] disabled:bg-slate-300"
+                  >
+                    <Send size={16} /> Kirim balasan
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="p-8">
+                <h2 className="text-xl font-black text-slate-950">Pilih percakapan</h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">Klik salah satu inbox untuk melihat detail chat.</p>
+              </div>
+            )}
+          </section>
+        </div>
+      ) : (
+        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <MessageSquare className="text-[#0A66FF]" size={36} />
+          <h2 className="mt-4 text-xl font-black text-slate-950">Belum ada chat masuk.</h2>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
+            Setelah pengunjung mengirim pesan dari bubble chat, conversation akan muncul di inbox ini.
+          </p>
+        </section>
+      )}
+    </div>
+  );
+}
+
 function ContentWebsiteView({
   landingSections,
-  blogPosts,
 }: {
   landingSections: AdminPortalData["landingSections"];
-  blogPosts: AdminPortalData["blogPosts"];
 }) {
   const [badge, setBadge] = useState("Khusus pejuang Ujian Mandiri PTN 2026");
   const [headline, setHeadline] = useState(`${site.promise.split(",")[0]}, masa depan pasti cerah.`);
@@ -905,10 +1257,6 @@ function ContentWebsiteView({
     `${site.name} bantu kamu latihan dengan pola soal mandiri PTN, paham pembahasan lebih cepat, dan tidak ketinggalan deadline kampus impian.`,
   );
   const [cta, setCta] = useState("Mulai gratis sekarang");
-  const [newPostTitle, setNewPostTitle] = useState("");
-  const [newPostCategory, setNewPostCategory] = useState("Tips belajar");
-  const [newPostExcerpt, setNewPostExcerpt] = useState("");
-  const [newPostBody, setNewPostBody] = useState("");
   const [contentMessage, setContentMessage] = useState("");
   const [isSavingContent, setIsSavingContent] = useState(false);
 
@@ -919,48 +1267,20 @@ function ContentWebsiteView({
     setIsSavingContent(false);
   };
 
-  const createBlogDraft = async () => {
-    if (!newPostTitle.trim()) return;
-    setIsSavingContent(true);
-    const result = await createBlogPostAction({
-      title: newPostTitle,
-      category: newPostCategory,
-      excerpt: newPostExcerpt,
-      body: newPostBody,
-    });
-    setContentMessage(result.ok ? "Draft artikel dibuat." : (result.message ?? "Gagal membuat draft artikel."));
-    if (result.ok) {
-      setNewPostTitle("");
-      setNewPostExcerpt("");
-      setNewPostBody("");
-    }
-    setIsSavingContent(false);
-  };
-
   return (
     <div className="space-y-6">
       <PageTitle
         title="Konten Website"
-        description="Atur copy landing page, section website, dan artikel blog dari admin."
+        description="Atur copy landing page dan section website yang tampil ke publik."
         action={
-          <div className="flex gap-2">
-            <a
-              href="/"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-50"
-            >
-              <Eye size={16} /> Preview landing
-            </a>
-            <a
-              href="/blog"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-50"
-            >
-              <Newspaper size={16} /> Preview blog
-            </a>
-          </div>
+          <a
+            href="/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-50"
+          >
+            <Eye size={16} /> Preview landing
+          </a>
         }
       />
 
@@ -1025,55 +1345,123 @@ function ContentWebsiteView({
               ))}
             </div>
           </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-              <h2 className="font-black text-slate-900">Artikel blog</h2>
-              <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">Draft baru</span>
-            </div>
-            <div className="grid gap-3 border-b border-slate-100 p-5 md:grid-cols-2">
-              <Field label="Judul artikel">
-                <input className="field" value={newPostTitle} onChange={(event) => setNewPostTitle(event.target.value)} placeholder="Judul artikel baru" />
-              </Field>
-              <Field label="Kategori">
-                <input className="field" value={newPostCategory} onChange={(event) => setNewPostCategory(event.target.value)} />
-              </Field>
-              <Field label="Excerpt">
-                <textarea className="field min-h-20 resize-none" value={newPostExcerpt} onChange={(event) => setNewPostExcerpt(event.target.value)} />
-              </Field>
-              <Field label="Isi artikel">
-                <textarea className="field min-h-20 resize-none" value={newPostBody} onChange={(event) => setNewPostBody(event.target.value)} />
-              </Field>
-              <button
-                type="button"
-                disabled={isSavingContent || !newPostTitle.trim()}
-                onClick={createBlogDraft}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:bg-slate-300 md:col-span-2"
-              >
-                <Plus size={16} /> Buat draft artikel
-              </button>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {blogPosts.map((post) => (
-                <div key={post.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-black text-slate-900">{post.title}</p>
-                    <p className="text-sm font-semibold text-slate-500">
-                      {post.category} - update {post.updatedAt}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ContentStatusBadge status={post.status} />
-                    <button className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:text-blue-600">
-                      <Edit3 size={15} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BlogSeoView({ blogPosts }: { blogPosts: AdminPortalData["blogPosts"] }) {
+  const [newPostTitle, setNewPostTitle] = useState("");
+  const [newPostCategory, setNewPostCategory] = useState("Tips belajar");
+  const [newPostExcerpt, setNewPostExcerpt] = useState("");
+  const [newPostBody, setNewPostBody] = useState("");
+  const [blogMessage, setBlogMessage] = useState("");
+  const [isSavingBlog, setIsSavingBlog] = useState(false);
+
+  const createBlogDraft = async () => {
+    if (!newPostTitle.trim()) return;
+    setIsSavingBlog(true);
+    const result = await createBlogPostAction({
+      title: newPostTitle,
+      category: newPostCategory,
+      excerpt: newPostExcerpt,
+      body: newPostBody,
+    });
+    setBlogMessage(result.ok ? "Draft artikel dibuat." : (result.message ?? "Gagal membuat draft artikel."));
+    if (result.ok) {
+      setNewPostTitle("");
+      setNewPostExcerpt("");
+      setNewPostBody("");
+    }
+    setIsSavingBlog(false);
+  };
+
+  const seedSeoPosts = async () => {
+    setIsSavingBlog(true);
+    const result = await seedSeoBlogPostsAction();
+    setBlogMessage(result.ok ? `${result.count ?? 50} artikel SEO berhasil dipublish.` : (result.message ?? "Gagal generate artikel SEO."));
+    setIsSavingBlog(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageTitle
+        title="Blog & SEO"
+        description="Kelola artikel blog, draft editorial, dan seed konten Ujian Mandiri untuk halaman publik."
+        action={
+          <a
+            href="/blog"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-50"
+          >
+            <Newspaper size={16} /> Preview blog
+          </a>
+        }
+      />
+
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="font-black text-slate-900">Artikel blog</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Generate konten awal, lalu edit manual agar makin tajam sesuai data kampus dan produk.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={isSavingBlog}
+            onClick={seedSeoPosts}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:bg-slate-300"
+          >
+            <Sparkles size={16} /> Generate 50 artikel SEO
+          </button>
+        </div>
+
+        <div className="grid gap-3 border-b border-slate-100 p-5 md:grid-cols-2">
+          <Field label="Judul artikel">
+            <input className="field" value={newPostTitle} onChange={(event) => setNewPostTitle(event.target.value)} placeholder="Judul artikel baru" />
+          </Field>
+          <Field label="Kategori">
+            <input className="field" value={newPostCategory} onChange={(event) => setNewPostCategory(event.target.value)} />
+          </Field>
+          <Field label="Excerpt">
+            <textarea className="field min-h-20 resize-none" value={newPostExcerpt} onChange={(event) => setNewPostExcerpt(event.target.value)} />
+          </Field>
+          <Field label="Isi artikel">
+            <textarea className="field min-h-20 resize-none" value={newPostBody} onChange={(event) => setNewPostBody(event.target.value)} />
+          </Field>
+          <button
+            type="button"
+            disabled={isSavingBlog || !newPostTitle.trim()}
+            onClick={createBlogDraft}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:bg-slate-300 md:col-span-2"
+          >
+            <Plus size={16} /> Buat draft artikel
+          </button>
+          {blogMessage && <p className="text-sm font-bold text-slate-600 md:col-span-2">{blogMessage}</p>}
+        </div>
+
+        <div className="divide-y divide-slate-100">
+          {blogPosts.map((post) => (
+            <div key={post.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-black text-slate-900">{post.title}</p>
+                <p className="text-sm font-semibold text-slate-500">
+                  {post.category} - update {post.updatedAt}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <ContentStatusBadge status={post.status} />
+                <button className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:text-blue-600">
+                  <Edit3 size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -1263,6 +1651,16 @@ function TierBadge({ tier }: { tier: string }) {
 
 function ContentStatusBadge({ status }: { status: string }) {
   const className = status === "published" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700";
+  return <span className={`rounded-md px-2.5 py-1 text-[11px] font-black uppercase ${className}`}>{status}</span>;
+}
+
+function CrmStatusBadge({ status }: { status: string }) {
+  const className =
+    status === "closed"
+      ? "bg-slate-100 text-slate-600"
+      : status === "assigned"
+        ? "bg-blue-100 text-blue-700"
+        : "bg-amber-100 text-amber-700";
   return <span className={`rounded-md px-2.5 py-1 text-[11px] font-black uppercase ${className}`}>{status}</span>;
 }
 

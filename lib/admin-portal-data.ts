@@ -62,6 +62,22 @@ export type AdminPortalData = {
     updatedAt: string;
     owner: string;
   }>;
+  crmConversations: Array<{
+    id: string;
+    visitorName: string;
+    visitorEmail: string;
+    visitorPhone: string;
+    sourcePage: string;
+    topic: string;
+    status: string;
+    lastMessageAt: string;
+    messages: Array<{
+      id: string;
+      senderType: "visitor" | "bot" | "admin";
+      body: string;
+      createdAt: string;
+    }>;
+  }>;
 };
 
 function formatDate(value?: string | null) {
@@ -89,7 +105,7 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
   const supabase = createAdminClient();
   if (!supabase) return {};
 
-  const [profiles, transactions, promos, affiliates, blogPosts, siteContent, examSessions] = await Promise.all([
+  const [profiles, transactions, promos, affiliates, blogPosts, siteContent, examSessions, crmConversations, crmMessages] = await Promise.all([
     supabase.from("profiles").select("id,full_name,email,tier,role,target_ptns,created_at,updated_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("payment_transactions").select("id,order_id,user_id,customer_name,customer_email,plan,amount,payment_method,status,promo_code,affiliate_code,paid_at,created_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("promo_codes").select("id,code,discount_type,discount_value,usage_limit,used_count,expires_at,status").order("created_at", { ascending: false }).limit(100),
@@ -97,6 +113,16 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
     supabase.from("blog_posts").select("id,title,category,status,updated_at").order("updated_at", { ascending: false }).limit(100),
     supabase.from("site_content").select("id,section_key,title,status,owner,updated_at").order("updated_at", { ascending: false }).limit(100),
     supabase.from("exam_sessions").select("user_id,score").eq("status", "submitted").limit(1000),
+    supabase
+      .from("crm_conversations")
+      .select("id,visitor_name,visitor_email,visitor_phone,source_page,topic,status,last_message_at")
+      .order("last_message_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("crm_messages")
+      .select("id,conversation_id,sender_type,body,created_at")
+      .order("created_at", { ascending: true })
+      .limit(1000),
   ]);
 
   const scoreByUser = new Map<string, { count: number; total: number }>();
@@ -107,6 +133,18 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
       count: current.count + 1,
       total: current.total + Number(session.score ?? 0),
     });
+  }
+
+  const messagesByConversation = new Map<string, AdminPortalData["crmConversations"][number]["messages"]>();
+  for (const message of crmMessages.data ?? []) {
+    const current = messagesByConversation.get(message.conversation_id) ?? [];
+    current.push({
+      id: message.id,
+      senderType: message.sender_type,
+      body: message.body,
+      createdAt: formatDate(message.created_at),
+    });
+    messagesByConversation.set(message.conversation_id, current);
   }
 
   return {
@@ -173,6 +211,17 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
       status: section.status ?? "draft",
       updatedAt: formatDate(section.updated_at),
       owner: section.owner ?? "Content",
+    })),
+    crmConversations: (crmConversations.data ?? []).map((conversation) => ({
+      id: conversation.id,
+      visitorName: conversation.visitor_name ?? "Pengunjung website",
+      visitorEmail: conversation.visitor_email ?? "-",
+      visitorPhone: conversation.visitor_phone ?? "-",
+      sourcePage: conversation.source_page ?? "-",
+      topic: conversation.topic ?? "general",
+      status: conversation.status ?? "waiting_admin",
+      lastMessageAt: formatDate(conversation.last_message_at),
+      messages: messagesByConversation.get(conversation.id) ?? [],
     })),
   };
 }

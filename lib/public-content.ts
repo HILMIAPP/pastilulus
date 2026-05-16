@@ -76,7 +76,7 @@ export async function getPublicBlogPosts(fallback: PublicBlogPost[]) {
     .select("id,slug,title,category,excerpt,published_at,updated_at")
     .eq("status", "published")
     .order("published_at", { ascending: false })
-    .limit(12);
+    .limit(60);
 
   if (!data?.length) return fallback;
 

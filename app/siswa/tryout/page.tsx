@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Lock, PlayCircle } from "lucide-react";
 import { tryoutPaket } from "@/lib/app-data";
 import { canAccessTier, getCurrentSession } from "@/lib/session";
+import { site } from "@/lib/site-config";
 
 export default async function TryoutIndexPage() {
   const session = await getCurrentSession();
@@ -14,8 +15,9 @@ export default async function TryoutIndexPage() {
         scoring, pembahasan, dan rasionalisasi nilai.
       </p>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        {tryoutPaket.map((p) => {
+      {tryoutPaket.length ? (
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {tryoutPaket.map((p) => {
           const hasAccess = canAccessTier(session?.tier ?? "free", p.akses);
 
           return (
@@ -69,8 +71,24 @@ export default async function TryoutIndexPage() {
               </div>
             </div>
           );
-        })}
-      </div>
+          })}
+        </div>
+      ) : (
+        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h2 className="text-xl font-black text-slate-950">Paket tryout sedang disiapkan.</h2>
+          <p className="mt-2 max-w-xl leading-relaxed text-slate-600">
+            Tim {site.name} sedang menyiapkan paket simulasi baru. Cek blog atau info PTN sambil menunggu.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link href="/blog" className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white">
+              Baca blog
+            </Link>
+            <Link href="/siswa/info-ptn" className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-800">
+              Info PTN
+            </Link>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

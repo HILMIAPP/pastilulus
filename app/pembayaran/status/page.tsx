@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Mail, MessageCircle, XCircle } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { normalizePaymentStatus, paymentStatusCopy } from "@/lib/payment-status";
@@ -57,10 +57,24 @@ export default async function PaymentStatusPage({ searchParams }: Props) {
               Kembali ke harga
             </Link>
           </div>
-          <p className="mx-auto mt-6 max-w-xl rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold leading-relaxed text-slate-600">
-            Jika pembayaran sudah berhasil tetapi paket belum aktif, hubungi {site.emailKontak} dengan email akun dan
-            Order ID.
-          </p>
+          <div className="mx-auto mt-6 max-w-xl rounded-2xl bg-slate-50 px-4 py-4 text-left text-sm font-semibold leading-relaxed text-slate-600">
+            <p>
+              Jika pembayaran sudah berhasil tetapi paket belum aktif, hubungi support dengan email akun, Order ID, dan
+              screenshot bukti bayar.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a href={`mailto:${site.emailKontak}`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-800">
+                <Mail size={16} /> Email support
+              </a>
+              <Link
+                href={site.whatsappGroupUrl}
+                target={site.whatsappGroupUrl.startsWith("http") ? "_blank" : undefined}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-white"
+              >
+                <MessageCircle size={16} /> Grup WA
+              </Link>
+            </div>
+          </div>
         </section>
       </main>
       <SiteFooter />

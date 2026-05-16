@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { ShinyText } from "@/components/shiny-text";
+import { SupportChatBubble } from "@/components/support-chat-bubble";
 import { site } from "@/lib/site-config";
 
 const footerGroups = [
@@ -77,6 +78,7 @@ export function SiteFooter() {
           <p>Kontak: {site.emailKontak}</p>
         </div>
       </div>
+      <SupportChatBubble />
     </footer>
   );
 }

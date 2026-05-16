@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     type: "website",
     url: site.url,
   },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+  },
 };
 
 export default function RootLayout({
@@ -37,4 +40,3 @@ export default function RootLayout({
     </html>
   );
 }
-

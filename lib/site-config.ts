@@ -15,6 +15,7 @@ export const brand = {
   promise: publicEnv(process.env.NEXT_PUBLIC_BRAND_PROMISE, "Belajar pasti lulus, masa depan pasti cerah."),
   url: publicEnv(process.env.NEXT_PUBLIC_APP_URL, "https://pastilulus.id"),
   email: publicEnv(process.env.NEXT_PUBLIC_CONTACT_EMAIL, "halo@pastilulus.id"),
+  whatsappGroupUrl: publicEnv(process.env.NEXT_PUBLIC_WHATSAPP_GROUP_URL, "https://chat.whatsapp.com/CACw9kvVRxU8QpgRkX2KsW"),
 };
 
 export const whiteLabel = {
@@ -44,6 +45,7 @@ export const site = {
   promise: brand.promise,
   url: brand.url,
   emailKontak: brand.email,
+  whatsappGroupUrl: brand.whatsappGroupUrl,
   colors: whiteLabel.colors,
 };
 
