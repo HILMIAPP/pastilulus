@@ -64,34 +64,22 @@ export async function POST(request: Request) {
       .select("user_id,plan,amount,promo_code,affiliate_code")
       .maybeSingle();
 
+    // claim_promo_code uses SELECT FOR UPDATE + limit check: concurrent webhooks
+    // for the same promo code queue up, and only valid slots are incremented.
+    // If the promo was already exhausted by a concurrent payment, used_count
+    // stays at the limit rather than going over. The user keeps their subscription.
     if (shouldApplyPaidSideEffects && transaction?.promo_code) {
-      const { data: promo } = await supabaseAdmin
-        .from("promo_codes")
-        .select("used_count")
-        .eq("code", transaction.promo_code)
-        .maybeSingle<{ used_count: number }>();
-
-      await supabaseAdmin
-        .from("promo_codes")
-        .update({ used_count: (promo?.used_count ?? 0) + 1, updated_at: new Date().toISOString() })
-        .eq("code", transaction.promo_code);
+      await supabaseAdmin.rpc("claim_promo_code", {
+        p_code: transaction.promo_code,
+        p_base_amount: transaction.amount,
+      });
     }
 
     if (shouldApplyPaidSideEffects && transaction?.affiliate_code) {
-      const { data: affiliate } = await supabaseAdmin
-        .from("affiliate_partners")
-        .select("conversion_count,revenue_amount")
-        .eq("code", transaction.affiliate_code)
-        .maybeSingle<{ conversion_count: number; revenue_amount: number }>();
-
-      await supabaseAdmin
-        .from("affiliate_partners")
-        .update({
-          conversion_count: (affiliate?.conversion_count ?? 0) + 1,
-          revenue_amount: (affiliate?.revenue_amount ?? 0) + transaction.amount,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("code", transaction.affiliate_code);
+      await supabaseAdmin.rpc("increment_affiliate_conversion", {
+        affiliate: transaction.affiliate_code,
+        paid_amount: transaction.amount,
+      });
     }
 
     if (shouldApplyPaidSideEffects && transaction?.user_id) {
@@ -113,7 +101,23 @@ export async function POST(request: Request) {
         { onConflict: "midtrans_order_id" },
       );
 
-      await supabaseAdmin.from("profiles").update({ tier: transaction.plan, updated_at: new Date().toISOString() }).eq("id", transaction.user_id);
+      // Only upgrade tier — never downgrade (e.g. Pro user repurchasing Belajar via promo).
+      const tierRank: Record<string, number> = { free: 0, belajar: 1, pro: 2 };
+      const { data: currentProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("tier")
+        .eq("id", transaction.user_id)
+        .maybeSingle<{ tier: string }>();
+
+      const currentRank = tierRank[currentProfile?.tier ?? "free"] ?? 0;
+      const newRank = tierRank[transaction.plan] ?? 0;
+
+      if (newRank > currentRank) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ tier: transaction.plan, updated_at: new Date().toISOString() })
+          .eq("id", transaction.user_id);
+      }
     }
   }
 

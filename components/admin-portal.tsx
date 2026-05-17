@@ -9,6 +9,7 @@ import {
   createAffiliatePartnerAction,
   createBlogPostAction,
   createPromoCodeAction,
+  createWhatsAppLeadAction,
   replyCrmConversationAction,
   saveLandingHeroAction,
   seedSeoBlogPostsAction,
@@ -27,17 +28,21 @@ import {
   CreditCard,
   Database,
   Edit3,
+  ExternalLink,
   Eye,
   FileText,
   Filter,
+  Globe2,
   GraduationCap,
   Handshake,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Megaphone,
   MessageSquare,
   Menu,
   Newspaper,
+  PhoneCall,
   Plus,
   ReceiptText,
   Search,
@@ -252,7 +257,7 @@ const ADMIN_NAV: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[]
   { id: "promo", label: "Promo & Affiliate", icon: BadgePercent },
   { id: "users", label: "Data Pengguna", icon: Users },
   { id: "soal", label: "Review Soal", icon: Database },
-  { id: "crm", label: "CRM Chat", icon: MessageSquare },
+  { id: "crm", label: "CRM Omni", icon: MessageSquare },
   { id: "content", label: "Konten Website", icon: Newspaper },
   { id: "blog", label: "Blog & SEO", icon: FileText },
   { id: "ptn", label: "Manajemen PTN", icon: GraduationCap },
@@ -393,6 +398,36 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
     await replyCrmConversationAction({ conversationId, body });
   };
 
+  const createWhatsAppLead = async (input: { name: string; phone: string; message: string; topic: string }) => {
+    const result = await createWhatsAppLeadAction(input);
+    if (!result.ok || !result.conversationId) return result;
+
+    const now = "Baru saja";
+    const conversation = {
+      id: result.conversationId,
+      channel: "whatsapp" as const,
+      visitorName: input.name.trim() || "Lead WhatsApp",
+      visitorEmail: "-",
+      visitorPhone: input.phone.trim(),
+      sourcePage: site.enableBaileysCrm ? "whatsapp:baileys-manual" : "whatsapp:manual-admin",
+      topic: input.topic.trim() || "whatsapp",
+      status: "waiting_admin",
+      lastMessageAt: now,
+      messages: [
+        {
+          id: `local-wa-${result.conversationId}`,
+          senderType: "visitor" as const,
+          body: input.message.trim() || "Lead WhatsApp dibuat manual dari admin omni CRM.",
+          createdAt: now,
+        },
+      ],
+    };
+
+    setCrmConversations((prev) => [conversation, ...prev]);
+    setSelectedCrmId(result.conversationId);
+    return result;
+  };
+
   const updateCrmStatus = async (conversationId: string, status: "waiting_admin" | "assigned" | "closed") => {
     setCrmConversations((prev) => prev.map((conversation) => (conversation.id === conversationId ? { ...conversation, status } : conversation)));
     await updateCrmConversationStatusAction({ conversationId, status });
@@ -487,6 +522,7 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
               selectedConversation={selectedCrmConversation}
               onSelectConversation={setSelectedCrmId}
               onReply={replyCrm}
+              onCreateWhatsAppLead={createWhatsAppLead}
               onUpdateStatus={updateCrmStatus}
             />
           )}
@@ -1074,60 +1110,205 @@ function ReviewSoalView({
   );
 }
 
+function normalizeWaPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+  if (digits.startsWith("62")) return digits;
+  return digits;
+}
+
+function whatsappCustomerLink(phone: string, message: string) {
+  const normalized = normalizeWaPhone(phone);
+  if (!normalized) return "";
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+function CrmChannelBadge({ channel }: { channel: "website" | "whatsapp" }) {
+  const Icon = channel === "whatsapp" ? PhoneCall : Globe2;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black uppercase ${
+        channel === "whatsapp" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
+      }`}
+    >
+      <Icon size={12} />
+      {channel === "whatsapp" ? "WhatsApp" : "Website"}
+    </span>
+  );
+}
+
 function CrmChatView({
   conversations,
   selectedConversation,
   onSelectConversation,
   onReply,
+  onCreateWhatsAppLead,
   onUpdateStatus,
 }: {
   conversations: NonNullable<AdminPortalData["crmConversations"]>;
   selectedConversation?: NonNullable<AdminPortalData["crmConversations"]>[number];
   onSelectConversation: (id: string) => void;
   onReply: (conversationId: string, body: string) => void;
+  onCreateWhatsAppLead: (input: { name: string; phone: string; message: string; topic: string }) => Promise<{ ok: boolean; message?: string; conversationId?: string }>;
   onUpdateStatus: (conversationId: string, status: "waiting_admin" | "assigned" | "closed") => void;
 }) {
   const [replyBody, setReplyBody] = useState("");
+  const [channelFilter, setChannelFilter] = useState<"all" | "website" | "whatsapp">("all");
+  const [waName, setWaName] = useState("");
+  const [waPhone, setWaPhone] = useState("");
+  const [waMessage, setWaMessage] = useState("");
+  const [waStatus, setWaStatus] = useState("");
   const openCount = conversations.filter((conversation) => conversation.status !== "closed").length;
+  const websiteCount = conversations.filter((conversation) => conversation.channel === "website").length;
+  const whatsappCount = conversations.filter((conversation) => conversation.channel === "whatsapp").length;
+  const filteredConversations = conversations.filter((conversation) => channelFilter === "all" || conversation.channel === channelFilter);
+  const activeConversation =
+    selectedConversation && (channelFilter === "all" || selectedConversation.channel === channelFilter)
+      ? selectedConversation
+      : filteredConversations[0];
+  const selectedWaLink = activeConversation
+    ? whatsappCustomerLink(activeConversation.visitorPhone, `Halo kak ${activeConversation.visitorName}, admin ${site.name} bantu lanjut dari percakapan CRM ya.`)
+    : "";
 
   const submitReply = async () => {
-    if (!selectedConversation || !replyBody.trim()) return;
+    if (!activeConversation || !replyBody.trim()) return;
     const body = replyBody.trim();
     setReplyBody("");
-    await onReply(selectedConversation.id, body);
+    await onReply(activeConversation.id, body);
+  };
+
+  const createWaLead = async () => {
+    setWaStatus("");
+    const result = await onCreateWhatsAppLead({
+      name: waName,
+      phone: waPhone,
+      message: waMessage,
+      topic: "whatsapp",
+    });
+    if (!result.ok) {
+      setWaStatus(result.message ?? "Gagal membuat lead WhatsApp.");
+      return;
+    }
+    setWaName("");
+    setWaPhone("");
+    setWaMessage("");
+    setChannelFilter("whatsapp");
+    setWaStatus("Lead WhatsApp masuk ke inbox omni.");
   };
 
   return (
     <div className="space-y-6">
       <PageTitle
-        title="CRM Chat"
-        description="Inbox percakapan dari bubble chat publik. Admin bisa membaca, membalas, dan menutup conversation."
+        title="CRM Omni"
+        description="Satu inbox untuk chat website dan follow-up WhatsApp. Admin bisa baca, balas, assign, close, dan buka WA customer."
         action={<span className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">{openCount} open chat</span>}
       />
 
-      {conversations.length ? (
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-[#0A66FF]">
+            <Inbox size={20} />
+          </div>
+          <p className="mt-4 text-sm font-bold text-slate-500">Total conversation</p>
+          <p className="mt-1 text-3xl font-black text-slate-950">{conversations.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+            <Globe2 size={20} />
+          </div>
+          <p className="mt-4 text-sm font-bold text-slate-500">Website chat</p>
+          <p className="mt-1 text-3xl font-black text-slate-950">{websiteCount}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <PhoneCall size={20} />
+          </div>
+          <p className="mt-4 text-sm font-bold text-slate-500">WhatsApp lead</p>
+          <p className="mt-1 text-3xl font-black text-slate-950">{whatsappCount}</p>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        {site.enableBaileysCrm && (
+          <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-black text-emerald-950">Baileys WhatsApp bridge</p>
+                <p className="mt-1 text-sm font-semibold leading-relaxed text-emerald-800">
+                  Jalankan worker <code className="rounded bg-white px-1.5 py-0.5">npm run wa:crm</code>, scan QR di terminal, lalu pesan WA masuk dan balasan admin tersinkron ke inbox ini.
+                </p>
+              </div>
+              <span className="rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-700">Baileys ready</span>
+            </div>
+          </div>
+        )}
+        <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1.4fr_auto]">
+          <Field label="Nama lead WA">
+            <input className="field" value={waName} onChange={(event) => setWaName(event.target.value)} placeholder="Contoh: Kak Rina" />
+          </Field>
+          <Field label="Nomor WhatsApp">
+            <input className="field" value={waPhone} onChange={(event) => setWaPhone(event.target.value)} placeholder="085155072188" />
+          </Field>
+          <Field label="Catatan / pesan awal">
+            <input className="field" value={waMessage} onChange={(event) => setWaMessage(event.target.value)} placeholder="Tanya paket, pembayaran, atau info PTN..." />
+          </Field>
+          <button
+            type="button"
+            onClick={createWaLead}
+            disabled={!waPhone.trim()}
+            className="self-end rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:bg-slate-300"
+          >
+            + Lead WA
+          </button>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {[
+            { id: "all", label: "Semua channel" },
+            { id: "website", label: "Website" },
+            { id: "whatsapp", label: "WhatsApp" },
+          ].map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              onClick={() => setChannelFilter(filter.id as "all" | "website" | "whatsapp")}
+              className={`rounded-xl px-3 py-2 text-xs font-black ${
+                channelFilter === filter.id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+          {waStatus && <span className="text-xs font-bold text-slate-500">{waStatus}</span>}
+        </div>
+      </section>
+
+      {filteredConversations.length ? (
         <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-5">
-              <h2 className="font-black text-slate-950">Inbox</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">Urut dari pesan terakhir.</p>
+              <h2 className="font-black text-slate-950">Omni inbox</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Urut dari pesan terakhir, lintas channel.</p>
             </div>
             <div className="max-h-[640px] divide-y divide-slate-100 overflow-y-auto">
-              {conversations.map((conversation) => (
+              {filteredConversations.map((conversation) => (
                 <button
                   key={conversation.id}
                   type="button"
                   onClick={() => onSelectConversation(conversation.id)}
                   className={`block w-full p-5 text-left transition hover:bg-slate-50 ${
-                    selectedConversation?.id === conversation.id ? "bg-blue-50/70" : "bg-white"
+                    activeConversation?.id === conversation.id ? "bg-blue-50/70" : "bg-white"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-black text-slate-950">{conversation.visitorName}</p>
-                      <p className="text-xs font-semibold text-slate-500">{conversation.visitorEmail}</p>
+                      <p className="text-xs font-semibold text-slate-500">{conversation.channel === "whatsapp" ? conversation.visitorPhone : conversation.visitorEmail}</p>
                     </div>
-                    <CrmStatusBadge status={conversation.status} />
+                    <div className="flex flex-col items-end gap-2">
+                      <CrmChannelBadge channel={conversation.channel} />
+                      <CrmStatusBadge status={conversation.status} />
+                    </div>
                   </div>
                   <p className="mt-3 line-clamp-2 text-sm font-semibold leading-relaxed text-slate-600">
                     {conversation.messages.at(-1)?.body ?? "Belum ada pesan."}
@@ -1141,27 +1322,40 @@ function CrmChatView({
           </section>
 
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {selectedConversation ? (
+            {activeConversation ? (
               <>
                 <div className="flex flex-col gap-3 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-slate-950">{selectedConversation.visitorName}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl font-black text-slate-950">{activeConversation.visitorName}</h2>
+                      <CrmChannelBadge channel={activeConversation.channel} />
+                    </div>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      {selectedConversation.visitorEmail} - {selectedConversation.visitorPhone}
+                      {activeConversation.visitorEmail} - {activeConversation.visitorPhone}
                     </p>
-                    <p className="mt-1 text-xs font-bold text-slate-400">Source: {selectedConversation.sourcePage}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-400">Source: {activeConversation.sourcePage}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {selectedWaLink && (
+                      <a
+                        href={selectedWaLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700"
+                      >
+                        <PhoneCall size={14} /> Buka WA <ExternalLink size={13} />
+                      </a>
+                    )}
                     <button
                       type="button"
-                      onClick={() => onUpdateStatus(selectedConversation.id, "assigned")}
+                      onClick={() => onUpdateStatus(activeConversation.id, "assigned")}
                       className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"
                     >
                       Assign
                     </button>
                     <button
                       type="button"
-                      onClick={() => onUpdateStatus(selectedConversation.id, "closed")}
+                      onClick={() => onUpdateStatus(activeConversation.id, "closed")}
                       className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800"
                     >
                       Close
@@ -1170,7 +1364,7 @@ function CrmChatView({
                 </div>
 
                 <div className="max-h-[460px] space-y-3 overflow-y-auto bg-slate-50 p-5">
-                  {selectedConversation.messages.map((message) => {
+                  {activeConversation.messages.map((message) => {
                     const isAdmin = message.senderType === "admin";
                     const isBot = message.senderType === "bot";
                     return (
@@ -1204,7 +1398,12 @@ function CrmChatView({
                     />
                   </Field>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {["Halo kak, bisa dibantu kirim email akun dan Order ID?", "Paket Belajar cocok untuk mulai tryout dan pembahasan.", "Untuk info deadline, kampus targetnya apa ya kak?"].map((template) => (
+                    {[
+                      "Halo kak, bisa dibantu kirim email akun dan Order ID?",
+                      "Paket Belajar cocok untuk mulai tryout dan pembahasan.",
+                      "Untuk info deadline, kampus targetnya apa ya kak?",
+                      "Aku lanjutkan via WhatsApp ya kak, supaya lebih cepat.",
+                    ].map((template) => (
                       <button
                         key={template}
                         type="button"
@@ -1236,9 +1435,9 @@ function CrmChatView({
       ) : (
         <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <MessageSquare className="text-[#0A66FF]" size={36} />
-          <h2 className="mt-4 text-xl font-black text-slate-950">Belum ada chat masuk.</h2>
+          <h2 className="mt-4 text-xl font-black text-slate-950">Belum ada conversation di channel ini.</h2>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
-            Setelah pengunjung mengirim pesan dari bubble chat, conversation akan muncul di inbox ini.
+            Chat website akan muncul otomatis dari bubble. Untuk WhatsApp, buat lead manual dari form di atas dan lanjutkan lewat tombol Buka WA.
           </p>
         </section>
       )}

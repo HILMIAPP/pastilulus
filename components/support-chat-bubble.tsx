@@ -1,200 +1,154 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { Bot, Loader2, MessageCircle, Send, ShoppingBag, X } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Bot, Loader2, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { site } from "@/lib/site-config";
 
 type ChatMessage = {
   id: string;
-  sender: "bot" | "visitor" | "admin";
+  role: "user" | "assistant";
   body: string;
   pending?: boolean;
 };
 
-type RemoteChatMessage = {
-  id: string;
-  sender: "bot" | "visitor" | "admin";
-  body: string;
-};
+type GroqHistory = { role: "user" | "assistant"; content: string };
 
 const quickReplies = [
-  "Saya mau tanya paket belajar",
-  "Pembayaran saya belum aktif",
-  "Mau info Ujian Mandiri PTN",
+  "Perbedaan paket Belajar dan Pro?",
+  "Gimana cara tryout UM di sini?",
+  "PTN mana yang ada Ujian Mandiri?",
 ];
 
-const initialMessages: ChatMessage[] = [
-  {
-    id: "welcome",
-    sender: "bot",
-    body: "Halo, aku Admin AI Bot Nukaedu. Tulis pertanyaan kamu di sini, nanti aku jawab dulu. Kalau butuh manusia, aku bisa lempar percakapan ini ke inbox CRM admin.",
-  },
-];
-
-function waLink(message: string) {
-  const baseUrl = site.whatsappGroupUrl;
-  if (!baseUrl.startsWith("https://wa.me/")) return baseUrl;
-  return `${baseUrl}?text=${encodeURIComponent(message)}`;
-}
+const welcomeMessage: ChatMessage = {
+  id: "welcome",
+  role: "assistant",
+  body: `Halo kak! Aku AI asisten ${site.name}. Ada yang bisa aku bantu seputar persiapan Ujian Mandiri PTN, paket belajar, atau fitur platform?`,
+};
 
 export function SupportChatBubble() {
   const [isOpen, setIsOpen] = useState(false);
-  const [conversationId, setConversationId] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
+  const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const messageEndRef = useRef<HTMLDivElement>(null);
-  const messageIdRef = useRef(0);
+  const counterRef = useRef(0);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen) messageEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (isOpen) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [isOpen, messages]);
 
-  const syncConversation = useCallback(async (id: string) => {
-    const response = await fetch(`/api/crm/chat?conversationId=${encodeURIComponent(id)}`).catch(() => null);
-    if (!response?.ok) return;
+  function buildHistory(current: ChatMessage[]): GroqHistory[] {
+    return current
+      .filter((m) => !m.pending && m.id !== "welcome")
+      .map((m) => ({ role: m.role, content: m.body }));
+  }
 
-    const data = (await response.json()) as { messages?: RemoteChatMessage[] };
-    if (!data.messages?.length) return;
+  async function sendMessage(text: string) {
+    const clean = text.trim();
+    if (!clean || isSending) return;
 
-    setMessages([
-      initialMessages[0],
-      ...data.messages.map((chat) => ({
-        id: chat.id,
-        sender: chat.sender,
-        body: chat.body,
-      })),
-    ]);
-  }, []);
+    counterRef.current += 1;
+    const n = counterRef.current;
 
-  useEffect(() => {
-    if (!isOpen || !conversationId) return;
-    const interval = window.setInterval(() => {
-      void syncConversation(conversationId);
-    }, 8000);
-    return () => window.clearInterval(interval);
-  }, [conversationId, isOpen, syncConversation]);
+    const userMsg: ChatMessage = { id: `u-${n}`, role: "user", body: clean };
+    const pendingMsg: ChatMessage = { id: `a-${n}`, role: "assistant", body: "", pending: true };
 
-  const sendMessage = async (body: string, options?: { handoff?: boolean }) => {
-    const cleanBody = body.trim();
-    if (!cleanBody || isSending) return;
-    messageIdRef.current += 1;
-    const messageNumber = messageIdRef.current;
-
-    const visitorMessage: ChatMessage = {
-      id: `visitor-${messageNumber}`,
-      sender: "visitor",
-      body: cleanBody,
-    };
-    const pendingMessage: ChatMessage = {
-      id: `bot-pending-${messageNumber}`,
-      sender: "bot",
-      body: options?.handoff ? "Menghubungkan ke admin manusia..." : "Sebentar, aku cek dulu...",
-      pending: true,
-    };
-
-    setMessages((current) => [...current, visitorMessage, pendingMessage]);
+    setMessages((prev) => [...prev, userMsg, pendingMsg]);
+    setInput("");
     setIsSending(true);
-    setMessage("");
 
-    const response = await fetch("/api/crm/chat", {
+    const history = buildHistory([...messages, userMsg]);
+
+    const res = await fetch("/api/crm/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversationId: conversationId || undefined,
-        message: cleanBody,
-        handoff: options?.handoff ?? false,
-        sourcePage: typeof window !== "undefined" ? window.location.pathname : "/",
-      }),
+      body: JSON.stringify({ message: clean, history }),
     }).catch(() => null);
 
-    if (!response?.ok) {
-      setMessages((current) =>
-        current.map((item) =>
-          item.id === pendingMessage.id
-            ? {
-                ...item,
-                body: "Maaf, chat CRM belum aktif. Kamu tetap bisa lanjut lewat tombol WhatsApp di bawah.",
-                pending: false,
-              }
-            : item,
-        ),
-      );
-      setIsSending(false);
-      return;
-    }
+    const data = res?.ok
+      ? ((await res.json().catch(() => ({}))) as { reply?: string })
+      : null;
 
-    const data = (await response.json()) as { conversationId?: string; reply?: string };
-    if (data.conversationId) {
-      setConversationId(data.conversationId);
-      void syncConversation(data.conversationId);
-    }
-    setMessages((current) =>
-      current.map((item) =>
-        item.id === pendingMessage.id
-          ? {
-              ...item,
-              body: data.reply ?? "Pesan kamu sudah masuk inbox CRM admin.",
-              pending: false,
-            }
-          : item,
-      ),
+    const reply =
+      data?.reply ??
+      "Maaf kak, koneksi ke AI terputus. Coba lagi sebentar atau hubungi kami via WA 085155072188.";
+
+    setMessages((prev) =>
+      prev.map((m) => (m.id === pendingMsg.id ? { ...m, body: reply, pending: false } : m)),
     );
     setIsSending(false);
-  };
+  }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    void sendMessage(message);
-  };
-
-  const requestHumanAdmin = () => {
-    void sendMessage("Saya ingin dibantu admin manusia.", { handoff: true });
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    void sendMessage(input);
   };
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
       {isOpen && (
-        <section className="w-[calc(100vw-2.5rem)] max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/70">
+        <section className="flex w-[calc(100vw-2.5rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/60">
+          {/* Header */}
           <div className="flex items-center justify-between bg-slate-950 px-5 py-4 text-white">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0A66FF]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0A66FF]">
                 <Bot size={20} />
               </div>
               <div>
-                <p className="font-black">Admin AI Bot {site.name}</p>
-                <p className="text-xs font-semibold text-slate-300">Chat dulu, lalu bisa dilempar ke admin</p>
+                <p className="font-black leading-tight">AI Asisten {site.name}</p>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <p className="text-xs font-semibold text-slate-300">Online — siap membantu</p>
+                </div>
               </div>
             </div>
-            <button type="button" aria-label="Tutup chat" onClick={() => setIsOpen(false)} className="rounded-xl p-2 text-slate-300 hover:bg-white/10 hover:text-white">
+            <button
+              type="button"
+              aria-label="Tutup chat"
+              onClick={() => setIsOpen(false)}
+              className="rounded-xl p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
+            >
               <X size={18} />
             </button>
           </div>
 
-          <div className="flex max-h-[70vh] flex-col">
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 px-5 py-4">
-              {messages.map((chat) => (
-                <div key={chat.id} className={`flex ${chat.sender === "visitor" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm font-semibold leading-relaxed shadow-sm ${
-                      chat.sender === "visitor"
-                        ? "rounded-br-md bg-[#0A66FF] text-white"
-                        : chat.sender === "admin"
-                          ? "rounded-bl-md border border-emerald-200 bg-emerald-50 text-emerald-950"
-                          : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
-                    }`}
-                  >
-                    {chat.sender === "admin" && <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-emerald-700">Admin manusia</span>}
-                    {chat.pending && <Loader2 size={14} className="mr-2 inline animate-spin align-[-2px]" />}
-                    {chat.body}
+          {/* Messages */}
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4" style={{ maxHeight: "55vh" }}>
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "assistant" && (
+                  <div className="mr-2 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0A66FF]">
+                    <Sparkles size={13} className="text-white" />
                   </div>
+                )}
+                <div
+                  className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed shadow-sm ${
+                    msg.role === "user"
+                      ? "rounded-br-md bg-[#0A66FF] text-white"
+                      : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
+                  }`}
+                >
+                  {msg.pending ? (
+                    <span className="flex items-center gap-2 text-slate-400">
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Sedang berpikir...</span>
+                    </span>
+                  ) : (
+                    msg.body
+                  )}
                 </div>
-              ))}
-              <div ref={messageEndRef} />
-            </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
 
-            <div className="space-y-4 border-t border-slate-200 bg-white p-5">
+          {/* Input area */}
+          <div className="space-y-3 border-t border-slate-100 bg-white p-4">
+            {/* Quick replies — only show before user sends first message */}
+            {messages.length === 1 && (
               <div className="grid gap-2">
                 {quickReplies.map((reply) => (
                   <button
@@ -202,79 +156,59 @@ export function SupportChatBubble() {
                     type="button"
                     onClick={() => sendMessage(reply)}
                     disabled={isSending}
-                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-left text-sm font-black text-slate-700 transition hover:border-[#0A66FF] hover:text-[#0A66FF] disabled:opacity-60"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-2.5 text-left text-xs font-bold text-slate-600 transition hover:border-[#0A66FF] hover:text-[#0A66FF] disabled:opacity-50"
                   >
                     {reply}
-                    <Send size={15} />
+                    <Send size={13} className="shrink-0" />
                   </button>
                 ))}
               </div>
+            )}
 
-              <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
-                <label className="sr-only" htmlFor="support-chat-message">
-                  Tulis pesan chat
-                </label>
-                <div className="flex items-end gap-2">
-                  <textarea
-                    id="support-chat-message"
-                    value={message}
-                    onChange={(event) => setMessage(event.target.value)}
-                    className="max-h-28 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm font-semibold text-slate-700 outline-none"
-                    placeholder="Ketik pertanyaan kamu..."
-                  />
-                  <button
-                    type="submit"
-                    aria-label="Kirim pesan"
-                    disabled={isSending || !message.trim()}
-                    className="mb-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-white hover:bg-slate-800 disabled:bg-slate-300"
-                  >
-                    {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                  </button>
-                </div>
-              </form>
-
+            <form onSubmit={handleSubmit} className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+              <label className="sr-only" htmlFor="ai-chat-input">
+                Ketik pertanyaan
+              </label>
+              <textarea
+                id="ai-chat-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendMessage(input);
+                  }
+                }}
+                placeholder="Ketik pertanyaan kamu..."
+                rows={1}
+                className="max-h-28 min-h-[2.5rem] flex-1 resize-none bg-transparent px-2 py-2 text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+              />
               <button
-                type="button"
-                onClick={requestHumanAdmin}
-                disabled={isSending}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-black text-[#0A66FF] hover:border-[#0A66FF] hover:bg-white disabled:opacity-60"
+                type="submit"
+                aria-label="Kirim pesan"
+                disabled={isSending || !input.trim()}
+                className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-white transition hover:bg-[#0A66FF] disabled:bg-slate-200 disabled:text-slate-400"
               >
-                <Bot size={16} />
-                Lempar ke admin manusia
+                {isSending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
               </button>
+            </form>
 
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  href={waLink("Halo admin, saya butuh bantuan.")}
-                  target="_blank"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white hover:bg-emerald-600"
-                >
-                  <MessageCircle size={16} /> WA Grup
-                </Link>
-                <Link
-                  href="/harga"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0A66FF] px-4 py-3 text-sm font-black text-white hover:bg-[#0052D6]"
-                >
-                  <ShoppingBag size={16} /> Paket
-                </Link>
-              </div>
-
-              <p className="rounded-2xl bg-slate-100 px-4 py-3 text-xs font-semibold leading-relaxed text-slate-600">
-                Percakapan ini disimpan ke CRM admin. Balasan manusia muncul di dashboard admin, sementara pengunjung tetap bisa lanjut via WhatsApp.
-              </p>
-            </div>
+            <p className="text-center text-[10px] font-semibold text-slate-400">
+              AI bisa salah — untuk keputusan penting, konfirmasi ke admin.
+            </p>
           </div>
         </section>
       )}
 
+      {/* Trigger button */}
       <button
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="flex h-16 items-center gap-3 rounded-full bg-[#0A66FF] px-5 font-black text-white shadow-2xl shadow-blue-600/30 transition hover:-translate-y-0.5 hover:bg-[#0052D6]"
+        onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
+        className="flex h-14 items-center gap-2.5 rounded-full bg-[#0A66FF] px-5 font-black text-white shadow-2xl shadow-blue-600/30 transition hover:-translate-y-0.5 hover:bg-[#0052D6]"
       >
-        <MessageCircle size={24} />
-        <span className="hidden sm:inline">Chat admin</span>
+        {isOpen ? <X size={20} /> : <MessageCircle size={20} />}
+        <span className="hidden text-sm sm:inline">Tanya AI</span>
       </button>
     </div>
   );

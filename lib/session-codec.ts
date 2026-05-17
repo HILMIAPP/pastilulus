@@ -18,7 +18,12 @@ export type AppSession = {
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function getSessionSecret() {
-  return process.env.AUTH_SECRET ?? "dev-only-change-me-before-production";
+  const secret = process.env.AUTH_SECRET;
+  // Crash at startup rather than silently use a predictable secret in production.
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET environment variable is required in production.");
+  }
+  return secret ?? "dev-only-change-me-before-production";
 }
 
 function toBase64Url(value: string) {

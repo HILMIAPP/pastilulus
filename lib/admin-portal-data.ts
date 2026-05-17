@@ -64,6 +64,7 @@ export type AdminPortalData = {
   }>;
   crmConversations: Array<{
     id: string;
+    channel: "website" | "whatsapp";
     visitorName: string;
     visitorEmail: string;
     visitorPhone: string;
@@ -99,6 +100,11 @@ function formatIdr(value?: number | null) {
   })
     .format(value ?? 0)
     .replace(/\s/g, " ");
+}
+
+function deriveCrmChannel(sourcePage?: string | null): "website" | "whatsapp" {
+  const source = (sourcePage ?? "").toLowerCase();
+  return source.includes("whatsapp") || source.startsWith("wa:") ? "whatsapp" : "website";
 }
 
 export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> {
@@ -214,6 +220,7 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
     })),
     crmConversations: (crmConversations.data ?? []).map((conversation) => ({
       id: conversation.id,
+      channel: deriveCrmChannel(conversation.source_page),
       visitorName: conversation.visitor_name ?? "Pengunjung website",
       visitorEmail: conversation.visitor_email ?? "-",
       visitorPhone: conversation.visitor_phone ?? "-",

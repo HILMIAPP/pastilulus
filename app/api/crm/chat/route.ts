@@ -1,130 +1,91 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-
-type ChatPayload = {
-  conversationId?: string;
-  message?: string;
-  topic?: string;
-  handoff?: boolean;
-  visitorName?: string;
-  visitorEmail?: string;
-  visitorPhone?: string;
-  sourcePage?: string;
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
 };
 
-function inferTopic(message: string, explicitTopic?: string, handoff?: boolean) {
-  if (handoff) return "handoff";
-  if (explicitTopic && explicitTopic !== "general") return explicitTopic;
-  const text = message.toLowerCase();
-  if (text.includes("admin") || text.includes("manusia") || text.includes("cs")) return "handoff";
-  if (text.includes("bayar") || text.includes("order") || text.includes("aktif")) return "payment";
-  if (text.includes("paket") || text.includes("harga") || text.includes("produk")) return "package";
-  if (text.includes("ujian") || text.includes("ptn") || text.includes("mandiri")) return "ptn_info";
-  return "general";
-}
+type ChatPayload = {
+  message: string;
+  history?: ChatMessage[];
+};
 
-function botReply(topic: string) {
-  if (topic === "handoff") {
-    return "Siap, kak. Aku sudah lempar percakapan ini ke inbox CRM admin. Sambil menunggu, kakak juga bisa lanjut lewat tombol WA Grup di bawah.";
-  }
-  if (topic === "payment") {
-    return "Siap, kak. Untuk cek pembayaran, admin butuh email akun, Order ID, dan screenshot bukti bayar. Pesan ini sudah masuk inbox CRM admin.";
-  }
-  if (topic === "package") {
-    return "Siap, kak. Paket Belajar untuk tryout dan pembahasan, Paket Pro untuk fitur lebih lengkap. Admin bisa bantu pilihkan sesuai target kampus.";
-  }
-  if (topic === "ptn_info") {
-    return "Siap, kak. Sebutkan kampus target seperti UI, ITB, UGM, atau UNPAD. Admin akan bantu arahkan info Ujian Mandiri yang relevan.";
-  }
-  return "Terima kasih, kak. Pesan sudah masuk inbox CRM admin dan akan dibalas secepatnya.";
-}
+const SYSTEM_PROMPT = `Kamu adalah AI asisten resmi Pastilulus, platform persiapan Ujian Mandiri PTN terpercaya di Indonesia.
 
-export async function GET(request: Request) {
-  const supabase = createAdminClient();
-  if (!supabase) {
-    return Response.json({ ok: false, message: "CRM belum aktif." }, { status: 503 });
-  }
+Tugas kamu:
+- Menjawab pertanyaan seputar platform, paket, tryout, Info PTN, dan persiapan ujian mandiri.
+- Selalu ramah, singkat, dan langsung ke intinya.
+- Gunakan bahasa Indonesia santai tapi sopan. Panggil user "kak".
 
-  const { searchParams } = new URL(request.url);
-  const conversationId = searchParams.get("conversationId")?.trim();
-  if (!conversationId) {
-    return Response.json({ ok: false, message: "Conversation ID wajib diisi." }, { status: 400 });
-  }
+Informasi platform:
+- Nama: Pastilulus by Nukaedu
+- Kontak: halo@pastilulus.id | WA: 085155072188
 
-  const { data, error } = await supabase
-    .from("crm_messages")
-    .select("id,sender_type,body,created_at")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(80);
+Paket yang tersedia:
+- Free (Rp 0/bulan): tryout terbatas, info PTN dasar, contoh materi.
+- Belajar (Rp 29.000/bulan): soal & simulasi lengkap, info PTN + deadline tracker, jadwal belajar personal, tryout paket UM produksi.
+- Pro (Rp 49.000/bulan): semua fitur Belajar + rasionalisasi nilai, analitik kelemahan mendalam, prioritas support, AI tutor.
 
-  if (error) return Response.json({ ok: false, message: error.message }, { status: 500 });
+Fitur tersedia di platform:
+- Tryout CBT simulasi UM (SIMAK UI, UM UGM, SM ITB, SMUA UNAIR, UTM IPB, SM ITS, SMUP UNPAD, UM UNDIP, SMUB UB, Mandiri UNHAS) — total 1.240+ soal.
+- Info 20 PTN Ujian Mandiri: jadwal, biaya, dokumen, strategi.
+- Jadwal belajar personal berbasis onboarding target kampus.
+- Rasionalisasi nilai: estimasi peluang berdasarkan skor tryout.
+- Materi belajar PDF + logbook rangkuman UM PTN 2026.
 
-  return Response.json({
-    ok: true,
-    messages: (data ?? []).map((message) => ({
-      id: message.id,
-      sender: message.sender_type,
-      body: message.body,
-      createdAt: message.created_at,
-    })),
-  });
-}
+Aturan penting:
+- Jangan membuat janji spesifik tentang kelulusan atau jaminan PTN.
+- Jika pertanyaan di luar topik platform atau pendidikan PTN, arahkan balik dengan sopan.
+- Untuk masalah teknis atau pembayaran yang tidak bisa diselesaikan, sarankan kontak langsung: halo@pastilulus.id atau WA 085155072188.
+- Jawaban maksimal 3-4 kalimat, kecuali penjelasan teknis yang membutuhkan lebih.`;
 
 export async function POST(request: Request) {
-  const supabase = createAdminClient();
-  if (!supabase) {
-    return Response.json({ ok: false, message: "CRM belum aktif." }, { status: 503 });
-  }
-
   const payload = (await request.json().catch(() => ({}))) as ChatPayload;
   const message = String(payload.message ?? "").trim();
+
   if (!message) {
     return Response.json({ ok: false, message: "Pesan wajib diisi." }, { status: 400 });
   }
 
-  const topic = inferTopic(message, payload.topic, payload.handoff);
-  let conversationId = payload.conversationId;
-
-  if (!conversationId) {
-    const { data, error } = await supabase
-      .from("crm_conversations")
-      .insert({
-        visitor_name: payload.visitorName?.trim() || "Pengunjung website",
-        visitor_email: payload.visitorEmail?.trim() || null,
-        visitor_phone: payload.visitorPhone?.trim() || null,
-        source_page: payload.sourcePage?.trim() || null,
-        topic,
-        status: "waiting_admin",
-      })
-      .select("id")
-      .single();
-
-    if (error) return Response.json({ ok: false, message: error.message }, { status: 500 });
-    conversationId = data.id;
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return Response.json(
+      { ok: false, reply: "Maaf, AI sedang tidak tersedia. Hubungi kami via WA 085155072188 atau halo@pastilulus.id." },
+      { status: 503 },
+    );
   }
 
-  const now = new Date().toISOString();
-  const { error: messageError } = await supabase.from("crm_messages").insert([
-    {
-      conversation_id: conversationId,
-      sender_type: "visitor",
-      body: message,
-      metadata: { source: "support_chat_bubble", handoff: payload.handoff ?? false },
+  // Build conversation history for multi-turn context.
+  const history: ChatMessage[] = (payload.history ?? []).slice(-10); // keep last 10 turns max
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
-    {
-      conversation_id: conversationId,
-      sender_type: "bot",
-      body: botReply(topic),
-      metadata: { source: "bot_auto_reply", topic },
-    },
-  ]);
+    body: JSON.stringify({
+      model: "llama-3.1-8b-instant",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...history,
+        { role: "user", content: message },
+      ],
+      max_tokens: 300,
+      temperature: 0.5,
+    }),
+  }).catch(() => null);
 
-  if (messageError) return Response.json({ ok: false, message: messageError.message }, { status: 500 });
+  if (!response?.ok) {
+    return Response.json(
+      { ok: false, reply: "AI sedang sibuk, coba lagi sebentar. Atau hubungi langsung via WA 085155072188." },
+      { status: 502 },
+    );
+  }
 
-  await supabase
-    .from("crm_conversations")
-    .update({ topic, status: "waiting_admin", last_message_at: now, updated_at: now })
-    .eq("id", conversationId);
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
 
-  return Response.json({ ok: true, conversationId, reply: botReply(topic) });
+  const reply = data.choices?.[0]?.message?.content?.trim() ?? "Maaf, tidak ada jawaban dari AI.";
+
+  return Response.json({ ok: true, reply });
 }

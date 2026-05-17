@@ -12,6 +12,10 @@ async function assertAdmin() {
   }
 }
 
+function isBaileysCrmEnabled() {
+  return process.env.ENABLE_BAILEYS_CRM === "true" || process.env.ENABLE_BAILEYS_CRM === "1";
+}
+
 export async function syncPaymentTransactionAction(orderId: string) {
   await assertAdmin();
   const supabase = createAdminClient();
@@ -196,13 +200,24 @@ export async function replyCrmConversationAction(input: {
   const body = input.body.trim();
   if (!body) return { ok: false, message: "Balasan wajib diisi." };
 
+  const { data: conversation } = await supabase
+    .from("crm_conversations")
+    .select("source_page,visitor_phone")
+    .eq("id", input.conversationId)
+    .single();
+  const isWhatsAppConversation = String(conversation?.source_page ?? "").toLowerCase().includes("whatsapp") && Boolean(conversation?.visitor_phone);
+  const shouldQueueBaileys = isWhatsAppConversation && isBaileysCrmEnabled();
   const now = new Date().toISOString();
   const { error: messageError } = await supabase.from("crm_messages").insert({
     conversation_id: input.conversationId,
     sender_type: "admin",
     sender_id: session.userId,
     body,
-    metadata: { admin_email: session.email },
+    metadata: {
+      admin_email: session.email,
+      dispatch_channel: shouldQueueBaileys ? "baileys" : isWhatsAppConversation ? "whatsapp_manual" : "website",
+      dispatch_status: shouldQueueBaileys ? "queued" : isWhatsAppConversation ? "manual_follow_up" : "delivered_in_app",
+    },
   });
 
   if (messageError) return { ok: false, message: messageError.message };
@@ -220,6 +235,55 @@ export async function replyCrmConversationAction(input: {
   if (updateError) return { ok: false, message: updateError.message };
   revalidatePath("/admin");
   return { ok: true };
+}
+
+export async function createWhatsAppLeadAction(input: {
+  name: string;
+  phone: string;
+  message: string;
+  topic: string;
+}) {
+  const session = await getCurrentSession();
+  if (session?.role !== "admin" && session?.role !== "super_admin") {
+    throw new Error("Unauthorized admin action.");
+  }
+
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const phone = input.phone.trim();
+  if (!phone) return { ok: false, message: "Nomor WhatsApp wajib diisi." };
+
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("crm_conversations")
+    .insert({
+      visitor_name: input.name.trim() || "Lead WhatsApp",
+      visitor_phone: phone,
+      visitor_email: null,
+      source_page: isBaileysCrmEnabled() ? "whatsapp:baileys-manual" : "whatsapp:manual-admin",
+      topic: input.topic.trim() || "whatsapp",
+      status: "waiting_admin",
+      assigned_admin_id: session.userId,
+      last_message_at: now,
+      updated_at: now,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, message: error.message };
+
+  const body = input.message.trim() || "Lead WhatsApp dibuat manual dari admin omni CRM.";
+  const { error: messageError } = await supabase.from("crm_messages").insert({
+    conversation_id: data.id,
+    sender_type: "visitor",
+    body,
+    metadata: { source: isBaileysCrmEnabled() ? "whatsapp_baileys_manual" : "whatsapp_manual_admin", admin_email: session.email },
+  });
+
+  if (messageError) return { ok: false, message: messageError.message };
+  revalidatePath("/admin");
+  return { ok: true, conversationId: data.id };
 }
 
 export async function updateCrmConversationStatusAction(input: {

@@ -125,3 +125,74 @@ as $$
       updated_at = now()
   where code = affiliate;
 $$;
+
+-- Atomically validate and claim one usage slot for a promo code.
+-- Uses SELECT FOR UPDATE so concurrent requests queue rather than
+-- both reading the same used_count and both slipping through the limit.
+-- Returns (valid, discount_type, discount_value, discount_amount) where
+-- discount_amount is already computed against the given base_amount.
+create or replace function public.claim_promo_code(
+  p_code       text,
+  p_base_amount integer
+)
+returns table (
+  valid          boolean,
+  discount_type  text,
+  discount_value integer,
+  discount_amount integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  r public.promo_codes;
+  computed_discount integer;
+begin
+  -- Row-level lock: only one caller can proceed at a time for this code.
+  select * into r
+  from public.promo_codes
+  where code = p_code
+  for update;
+
+  if not found then
+    return query select false, ''::text, 0, 0;
+    return;
+  end if;
+
+  if r.status != 'published' then
+    return query select false, ''::text, 0, 0;
+    return;
+  end if;
+
+  if r.usage_limit > 0 and r.used_count >= r.usage_limit then
+    return query select false, ''::text, 0, 0;
+    return;
+  end if;
+
+  if r.starts_at is not null and r.starts_at > now() then
+    return query select false, ''::text, 0, 0;
+    return;
+  end if;
+
+  if r.expires_at is not null and r.expires_at < now() then
+    return query select false, ''::text, 0, 0;
+    return;
+  end if;
+
+  -- All checks passed — consume one slot atomically.
+  update public.promo_codes
+  set used_count = used_count + 1,
+      updated_at = now()
+  where code = p_code;
+
+  computed_discount := case
+    when r.discount_type = 'percent'
+      then least(p_base_amount, greatest(0, (p_base_amount * r.discount_value) / 100))
+    else
+      least(p_base_amount, greatest(0, r.discount_value))
+  end;
+
+  return query select true, r.discount_type::text, r.discount_value, computed_discount;
+end;
+$$;

@@ -54,10 +54,18 @@ function calculateDiscount(amount: number, promo?: PromoCodeRow | null) {
 }
 
 export async function POST(request: Request) {
+  const session = await getCurrentSession();
+
+  // Require an authenticated session before issuing a Midtrans order.
+  // This prevents anonymous spam from flooding payment_transactions.
+  if (!session || session.userId.startsWith("dev-")) {
+    return Response.json({ message: "Login diperlukan untuk melakukan pembayaran." }, { status: 401 });
+  }
+
   const body = (await request.json()) as SnapTokenRequest;
   const plan = getBillingPlan(body.planId ?? null);
-  const orderId = `PL-${plan.id}-${Date.now()}`;
-  const session = await getCurrentSession();
+  // UUID suffix prevents duplicate order_id on concurrent requests with the same millisecond timestamp.
+  const orderId = `PL-${plan.id}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
   const requestedPromoCode = normalizeTrackingCode(body.promoCode);
   const requestedAffiliateCode = normalizeTrackingCode(body.affiliateCode);
   const supabaseAdmin = createAdminClient();

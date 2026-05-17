@@ -2,6 +2,11 @@ function publicEnv(value: string | undefined, fallback: string) {
   return value || fallback;
 }
 
+function publicFlag(value: string | undefined, fallback = false) {
+  if (value === undefined) return fallback;
+  return value === "true" || value === "1";
+}
+
 export const brand = {
   name: publicEnv(process.env.NEXT_PUBLIC_BRAND_NAME, "Pastilulus"),
   owner: publicEnv(process.env.NEXT_PUBLIC_BRAND_OWNER, "Nukaedu"),
@@ -46,6 +51,7 @@ export const site = {
   url: brand.url,
   emailKontak: brand.email,
   whatsappGroupUrl: brand.whatsappGroupUrl,
+  enableBaileysCrm: publicFlag(process.env.NEXT_PUBLIC_ENABLE_BAILEYS_CRM, false),
   colors: whiteLabel.colors,
 };
 

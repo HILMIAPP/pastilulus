@@ -1,32 +1,23 @@
 import { getCurrentSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Accept both legacy format (paket.slug from frontend) and future format (paketSlug).
 type TryoutSubmitRequest = {
-  paket: {
+  paketSlug?: string;
+  paket?: {
     slug: string;
     title: string;
     subtitle: string;
     durasiMenit: number;
     akses: "gratis" | "belajar_pro";
   };
-  result: {
-    benar: number;
-    salah: number;
-    kosong: number;
-    skor: number;
-    total: number;
-  };
+  // Client sends questions from static bank — used for scoring only when
+  // the package has not yet been migrated to the questions table in DB.
   questions?: Array<{
     id: string;
-    nomor: number;
-    bagian: string;
-    tingkat: "MUDAH" | "SEDANG" | "HOTS";
-    pertanyaan: string;
-    opsi: Record<"A" | "B" | "C" | "D" | "E", string>;
     kunci: "A" | "B" | "C" | "D" | "E";
-    pembahasan: string;
   }>;
-  answers?: Record<string, "A" | "B" | "C" | "D" | "E" | null>;
+  answers: Record<string, "A" | "B" | "C" | "D" | "E" | null>;
 };
 
 export async function POST(request: Request) {
@@ -42,40 +33,118 @@ export async function POST(request: Request) {
     return Response.json({ persisted: false, message: "Supabase service role belum tersedia." }, { status: 202 });
   }
 
-  const requiredTier = body.paket.akses === "gratis" ? "free" : "belajar";
-  const { data: paket, error: packageError } = await supabaseAdmin
-    .from("tryout_packages")
-    .upsert(
-      {
-        slug: body.paket.slug,
-        title: body.paket.title,
-        subtitle: body.paket.subtitle,
-        required_tier: requiredTier,
-        duration_minutes: body.paket.durasiMenit,
-        is_published: true,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "slug" },
-    )
-    .select("id")
-    .single();
+  // Support both legacy and new request shapes.
+  const slug = body.paketSlug ?? body.paket?.slug;
+  if (!slug || typeof slug !== "string") {
+    return Response.json({ persisted: false, message: "Slug paket tidak valid." }, { status: 400 });
+  }
 
-  if (packageError || !paket) {
-    return Response.json({ persisted: false, message: packageError?.message ?? "Paket tryout gagal disimpan." }, { status: 500 });
+  const answers = body.answers ?? {};
+
+  // Try to resolve package from DB first.
+  const { data: paket } = await supabaseAdmin
+    .from("tryout_packages")
+    .select("id,required_tier")
+    .eq("slug", slug)
+    .eq("is_published", true)
+    .maybeSingle<{ id: string; required_tier: string }>();
+
+  // Enforce tier access server-side when package is known.
+  if (paket) {
+    const tierRequired = paket.required_tier === "free" ? "gratis" : "belajar_pro";
+    if (tierRequired === "belajar_pro" && session.tier === "free") {
+      return Response.json({ persisted: false, message: "Akses paket ini membutuhkan langganan." }, { status: 403 });
+    }
+  } else {
+    // Package not yet migrated to DB — fall back to client-sent tier from
+    // the static question bank. Tier enforcement relies on frontend guard only.
+    const akses = body.paket?.akses ?? "gratis";
+    if (akses === "belajar_pro" && session.tier === "free") {
+      return Response.json({ persisted: false, message: "Akses paket ini membutuhkan langganan." }, { status: 403 });
+    }
+  }
+
+  let correct = 0;
+  let wrong = 0;
+  let blank = 0;
+  let total = 0;
+  let dbQuestions: Array<{ id: string; answer_key: string; source_label: string | null }> = [];
+
+  if (paket) {
+    // Authoritative path: score from DB answer keys, not client data.
+    const { data: qs, error } = await supabaseAdmin
+      .from("questions")
+      .select("id,answer_key,source_label")
+      .eq("package_id", paket.id)
+      .eq("status", "published");
+
+    if (error) {
+      return Response.json({ persisted: false, message: error.message }, { status: 500 });
+    }
+
+    dbQuestions = qs ?? [];
+    total = dbQuestions.length;
+
+    for (const q of dbQuestions) {
+      const selected = answers[q.source_label ?? q.id];
+      if (!selected) blank++;
+      else if (selected === q.answer_key) correct++;
+      else wrong++;
+    }
+  } else if (body.questions?.length) {
+    // Fallback path: questions not in DB yet, score from client-sent question list.
+    // client sends answer keys from the static bank — not from user input.
+    total = body.questions.length;
+    for (const q of body.questions) {
+      const selected = answers[q.id];
+      if (!selected) blank++;
+      else if (selected === q.kunci) correct++;
+      else wrong++;
+    }
+  }
+
+  // UM scoring: +4 correct, -1 wrong, 0 blank.
+  const score = total > 0 ? Math.max(0, correct * 4 - wrong) : 0;
+
+  // Upsert package record so the DB catches up when questions are seeded later.
+  let packageId: string | null = paket?.id ?? null;
+  if (!paket && body.paket) {
+    const requiredTier = body.paket.akses === "gratis" ? "free" : "belajar";
+    const { data: upserted } = await supabaseAdmin
+      .from("tryout_packages")
+      .upsert(
+        {
+          slug,
+          title: body.paket.title,
+          subtitle: body.paket.subtitle,
+          required_tier: requiredTier,
+          duration_minutes: body.paket.durasiMenit,
+          is_published: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "slug" },
+      )
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    packageId = upserted?.id ?? null;
+  }
+
+  if (!packageId) {
+    return Response.json({ persisted: false, message: "Paket tryout tidak dapat diidentifikasi." }, { status: 500 });
   }
 
   const { data: examSession, error: sessionError } = await supabaseAdmin
     .from("exam_sessions")
     .insert({
       user_id: session.userId,
-      package_id: paket.id,
+      package_id: packageId,
       status: "submitted",
       started_at: new Date().toISOString(),
       submitted_at: new Date().toISOString(),
-      score: body.result.skor,
-      correct_count: body.result.benar,
-      wrong_count: body.result.salah,
-      blank_count: body.result.kosong,
+      score,
+      correct_count: correct,
+      wrong_count: wrong,
+      blank_count: blank,
     })
     .select("id")
     .single();
@@ -84,53 +153,25 @@ export async function POST(request: Request) {
     return Response.json({ persisted: false, message: sessionError?.message ?? "Sesi tryout gagal disimpan." }, { status: 500 });
   }
 
-  if (body.questions?.length) {
-    const questionRows = body.questions.map((question) => ({
-      package_id: paket.id,
-      number: question.nomor,
-      subject: question.bagian,
-      difficulty: question.tingkat,
-      prompt: question.pertanyaan,
-      option_a: question.opsi.A,
-      option_b: question.opsi.B,
-      option_c: question.opsi.C,
-      option_d: question.opsi.D,
-      option_e: question.opsi.E,
-      answer_key: question.kunci,
-      explanation: question.pembahasan,
-      source_label: question.id,
-      status: "published",
-      updated_at: new Date().toISOString(),
-    }));
-
-    const { data: persistedQuestions, error: questionError } = await supabaseAdmin
-      .from("questions")
-      .upsert(questionRows, { onConflict: "package_id,number" })
-      .select("id,source_label,answer_key");
-
-    if (questionError) {
-      return Response.json({ persisted: false, message: questionError.message }, { status: 500 });
-    }
-
-    const answerRows = (persistedQuestions ?? []).map((question) => {
-      const selected = body.answers?.[question.source_label ?? ""];
+  // Persist per-question answers only when DB questions exist.
+  if (dbQuestions.length) {
+    const answerRows = dbQuestions.map((q) => {
+      const selected = answers[q.source_label ?? q.id] ?? null;
       return {
         session_id: examSession.id,
-        question_id: question.id,
-        selected_answer: selected ?? null,
-        is_correct: selected ? selected === question.answer_key : null,
+        question_id: q.id,
+        selected_answer: selected,
+        is_correct: selected ? selected === q.answer_key : null,
         updated_at: new Date().toISOString(),
       };
     });
 
-    if (answerRows.length) {
-      const { error: answerError } = await supabaseAdmin.from("exam_answers").upsert(answerRows, {
-        onConflict: "session_id,question_id",
-      });
+    const { error: answerError } = await supabaseAdmin
+      .from("exam_answers")
+      .upsert(answerRows, { onConflict: "session_id,question_id" });
 
-      if (answerError) {
-        return Response.json({ persisted: false, message: answerError.message }, { status: 500 });
-      }
+    if (answerError) {
+      return Response.json({ persisted: false, message: answerError.message }, { status: 500 });
     }
   }
 
@@ -139,12 +180,8 @@ export async function POST(request: Request) {
     action: "tryout_submitted",
     entity_type: "exam_sessions",
     entity_id: examSession.id,
-    metadata: {
-      packageSlug: body.paket.slug,
-      totalQuestions: body.result.total,
-      score: body.result.skor,
-    },
+    metadata: { packageSlug: slug, totalQuestions: total, score },
   });
 
-  return Response.json({ persisted: true, examSessionId: examSession.id });
+  return Response.json({ persisted: true, examSessionId: examSession.id, score, correct, wrong, blank });
 }

@@ -45,3 +45,7 @@ next-env.d.ts
 tmp_materi_import/
 tmp_soal10_import/
 tmp_docx_peek/
+
+# WhatsApp Baileys local auth/session files
+.baileys-auth/
+.baileys-store.json
