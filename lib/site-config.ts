@@ -18,7 +18,7 @@ export const brand = {
     "Persiapan ujian mandiri PTN yang terarah: soal, simulasi, AI tutor, dan deadline.",
   ),
   promise: publicEnv(process.env.NEXT_PUBLIC_BRAND_PROMISE, "Belajar pasti lulus, masa depan pasti cerah."),
-  url: publicEnv(process.env.NEXT_PUBLIC_APP_URL, "https://pastilulus.id"),
+  url: publicEnv(process.env.NEXT_PUBLIC_APP_URL, "https://www.nukaedu.web.id"),
   email: publicEnv(process.env.NEXT_PUBLIC_CONTACT_EMAIL, "halo@pastilulus.id"),
   whatsappGroupUrl: publicEnv(process.env.NEXT_PUBLIC_WHATSAPP_GROUP_URL, "https://chat.whatsapp.com/CACw9kvVRxU8QpgRkX2KsW"),
 };

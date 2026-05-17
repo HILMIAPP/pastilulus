@@ -298,6 +298,8 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
   const paidCount = transactions.filter((trx) => trx.status === "paid").length;
   const pendingCount = transactions.filter((trx) => trx.status === "pending").length;
   const pendingSoal = soalData.filter((soal) => soal.status === "review").length;
+  const totalUsers = users.length;
+  const activeSubscriptions = users.filter((u) => u.tier !== "free").length;
   const selectedCrmConversation = crmConversations.find((conversation) => conversation.id === selectedCrmId) ?? crmConversations[0];
 
   const filteredUserTransactions = useMemo(
@@ -458,6 +460,9 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
               paidCount={paidCount}
               pendingCount={pendingCount}
               pendingSoal={pendingSoal}
+              totalUsers={totalUsers}
+              activeSubscriptions={activeSubscriptions}
+              recentTransactions={transactions.slice(0, 5)}
               onOpenBilling={() => setActiveTab("billing")}
               onOpenReview={() => setActiveTab("soal")}
             />
@@ -635,12 +640,18 @@ function DashboardView({
   paidCount,
   pendingCount,
   pendingSoal,
+  totalUsers,
+  activeSubscriptions,
+  recentTransactions,
   onOpenBilling,
   onOpenReview,
 }: {
   paidCount: number;
   pendingCount: number;
   pendingSoal: number;
+  totalUsers: number;
+  activeSubscriptions: number;
+  recentTransactions: Array<{ id: string; user: string; email: string; plan: string; amount: string; status: string; createdAt: string }>;
   onOpenBilling: () => void;
   onOpenReview: () => void;
 }) {
@@ -653,8 +664,8 @@ function DashboardView({
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={Users} label="Total pengguna" value="15.420" tone="blue" helper="+12%" />
-        <MetricCard icon={TrendingUp} label="Active subscriptions" value="1.250" tone="emerald" helper="+5%" />
+        <MetricCard icon={Users} label="Total pengguna" value={totalUsers.toLocaleString("id-ID")} tone="blue" helper="Dari database" />
+        <MetricCard icon={TrendingUp} label="Langganan aktif" value={activeSubscriptions.toLocaleString("id-ID")} tone="emerald" helper={`${totalUsers ? Math.round((activeSubscriptions / totalUsers) * 100) : 0}% dari total`} />
         <MetricCard icon={ReceiptText} label="Transaksi paid / pending" value={`${paidCount} / ${pendingCount}`} tone="amber" helper="Live billing" />
         <MetricCard icon={Database} label="Soal pending review" value={String(pendingSoal)} tone="rose" helper="Butuh aksi" />
       </div>
@@ -676,13 +687,35 @@ function DashboardView({
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 p-5">
-            <h2 className="font-black text-slate-800">Aktivitas terkini</h2>
+          <div className="flex items-center justify-between border-b border-slate-100 p-5">
+            <h2 className="font-black text-slate-800">Transaksi terbaru</h2>
+            <button onClick={onOpenBilling} className="text-sm font-black text-blue-600 hover:underline">Semua →</button>
           </div>
-          <div className="space-y-5 p-5">
-            <ActivityDot color="bg-blue-500" title="Budi Santoso upgrade ke Paket Pro" time="2 menit lalu" />
-            <ActivityDot color="bg-amber-500" title="System generate 50 soal SIMAK UI" time="15 menit lalu" />
-            <ActivityDot color="bg-emerald-500" title="Admin Rina menambahkan PTN baru" time="1 jam lalu" />
+          <div className="divide-y divide-slate-50 p-2">
+            {recentTransactions.length === 0 ? (
+              <p className="p-4 text-sm text-slate-400">Belum ada transaksi.</p>
+            ) : (
+              recentTransactions.map((trx) => (
+                <div key={trx.id} className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-slate-50">
+                  <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                    trx.status === "paid" ? "bg-emerald-500" :
+                    trx.status === "pending" ? "bg-amber-500" : "bg-red-400"
+                  }`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-slate-800">{trx.user}</p>
+                    <p className="text-xs text-slate-400">{trx.plan} · {trx.amount}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ${
+                      trx.status === "paid" ? "bg-emerald-100 text-emerald-700" :
+                      trx.status === "pending" ? "bg-amber-100 text-amber-700" :
+                      "bg-red-100 text-red-700"
+                    }`}>{trx.status}</span>
+                    <p className="mt-0.5 text-[10px] text-slate-400">{trx.createdAt}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </div>

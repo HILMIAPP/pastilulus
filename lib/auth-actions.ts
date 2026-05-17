@@ -1,10 +1,20 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clearSession, getRoleForEmail, getTierForRole, setSession, type AppSession } from "@/lib/session";
 import { createAppSessionFromUser } from "@/lib/auth-session";
 import { site, whiteLabel } from "@/lib/site-config";
 import { createClient } from "@/lib/supabase/server";
+
+// Derive origin from the actual incoming request so OAuth callbacks always
+// point to the correct host — not a hardcoded env var that may still say localhost.
+async function getOrigin() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
 
 function normalizeEmail(value: FormDataEntryValue | null) {
   return String(value ?? "").trim().toLowerCase();
@@ -113,11 +123,12 @@ export async function signUpAction(formData: FormData) {
 }
 
 export async function signInWithGoogleAction() {
+  const origin = await getOrigin();
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${site.url}/auth/callback`,
+      redirectTo: `${origin}/auth/callback`,
       queryParams: {
         access_type: "offline",
         prompt: "consent",
