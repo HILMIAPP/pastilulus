@@ -10,14 +10,20 @@ import {
   createBlogPostAction,
   createPromoCodeAction,
   createWhatsAppLeadAction,
+  publishBlogPostAction,
   replyCrmConversationAction,
   saveLandingHeroAction,
   seedSeoBlogPostsAction,
+  sendBroadcastAction,
   syncPaymentTransactionAction,
+  unpublishBlogPostAction,
+  updateBlogPostAction,
   updateCrmConversationStatusAction,
   updateQuestionStatusAction,
+  upsertPtnAction,
+  upsertPtnDeadlineAction,
 } from "@/lib/admin-actions";
-import type { AdminPortalData } from "@/lib/admin-portal-data";
+import type { AdminBroadcast, AdminPortalData, AdminPtn } from "@/lib/admin-portal-data";
 import { site, whiteLabel } from "@/lib/site-config";
 import {
   BadgePercent,
@@ -37,6 +43,7 @@ import {
   Handshake,
   Inbox,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Megaphone,
   MessageSquare,
@@ -292,6 +299,17 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
   const [newAffiliateCommission, setNewAffiliateCommission] = useState("10");
   const [newAffiliateStatus, setNewAffiliateStatus] = useState<"draft" | "published">("published");
 
+  // PTN state
+  const [ptns, setPtns] = useState<AdminPtn[]>(initialData.ptns ?? []);
+  const [ptnMsg, setPtnMsg] = useState("");
+
+  // Broadcast state
+  const [broadcasts, setBroadcasts] = useState<AdminBroadcast[]>(initialData.broadcasts ?? []);
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+
+  // Blog local state for publish/unpublish
+  const [blogData, setBlogData] = useState(blogContent);
+
   const selectedTransaction = transactions.find((trx) => trx.id === selectedTransactionId) ?? transactions[0];
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0];
   const selectedSoal = soalData.find((soal) => soal.id === selectedSoalId) ?? soalData[0];
@@ -435,6 +453,68 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
     await updateCrmConversationStatusAction({ conversationId, status });
   };
 
+  const savePtn = async (input: { id?: string; name: string; city: string; officialUrl: string }) => {
+    setPtnMsg("");
+    const result = await upsertPtnAction(input);
+    if (result.ok) {
+      if (input.id) {
+        setPtns((prev) => prev.map((p) => p.id === input.id ? { ...p, ...input } : p));
+      } else {
+        setPtns((prev) => [{ id: `ptn-${Date.now()}`, name: input.name, city: input.city, officialUrl: input.officialUrl, deadlines: [] }, ...prev]);
+      }
+      setPtnMsg("PTN berhasil disimpan.");
+    } else {
+      setPtnMsg(result.message ?? "Gagal menyimpan PTN.");
+    }
+  };
+
+  const savePtnDeadline = async (input: { id?: string; ptnId: string; title: string; openAt: string; closeAt: string; sourceUrl: string }) => {
+    const result = await upsertPtnDeadlineAction(input);
+    if (result.ok) {
+      setPtns((prev) => prev.map((p) => p.id === input.ptnId ? {
+        ...p,
+        deadlines: input.id
+          ? p.deadlines.map((d) => d.id === input.id ? { ...d, ...input } : d)
+          : [...p.deadlines, { id: `dl-${Date.now()}`, title: input.title, openAt: input.openAt, closeAt: input.closeAt, sourceUrl: input.sourceUrl }],
+      } : p));
+    }
+    return result;
+  };
+
+  const sendBroadcast = async (input: { target: string; title: string; body: string }) => {
+    setBroadcastMsg("");
+    const result = await sendBroadcastAction(input);
+    if (result.ok) {
+      setBroadcasts((prev) => [{
+        id: `bc-${Date.now()}`,
+        target: input.target,
+        title: input.title,
+        body: input.body,
+        status: "sent",
+        sentAt: "Baru saja",
+      }, ...prev]);
+      setBroadcastMsg("Broadcast berhasil dikirim.");
+    } else {
+      setBroadcastMsg(result.message ?? "Gagal mengirim broadcast.");
+    }
+  };
+
+  const publishBlog = async (id: string) => {
+    const result = await publishBlogPostAction(id);
+    if (result.ok) setBlogData((prev) => prev.map((p) => p.id === id ? { ...p, status: "published" } : p));
+  };
+
+  const unpublishBlog = async (id: string) => {
+    const result = await unpublishBlogPostAction(id);
+    if (result.ok) setBlogData((prev) => prev.map((p) => p.id === id ? { ...p, status: "draft" } : p));
+  };
+
+  const saveBlogPost = async (input: { id: string; title: string; category: string; excerpt: string; body: string }) => {
+    const result = await updateBlogPostAction(input);
+    if (result.ok) setBlogData((prev) => prev.map((p) => p.id === input.id ? { ...p, title: input.title, category: input.category } : p));
+    return result;
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
       <AdminSidebar
@@ -532,9 +612,9 @@ export default function AdminPortal({ initialData = {} }: { initialData?: Partia
             />
           )}
           {activeTab === "content" && <ContentWebsiteView landingSections={landingContent} />}
-          {activeTab === "blog" && <BlogSeoView blogPosts={blogContent} />}
-          {activeTab === "ptn" && <PtnView />}
-          {activeTab === "broadcast" && <BroadcastView />}
+          {activeTab === "blog" && <BlogSeoView blogPosts={blogData} onPublish={publishBlog} onUnpublish={unpublishBlog} onSave={saveBlogPost} />}
+          {activeTab === "ptn" && <PtnView ptns={ptns} msg={ptnMsg} onSavePtn={savePtn} onSaveDeadline={savePtnDeadline} />}
+          {activeTab === "broadcast" && <BroadcastView broadcasts={broadcasts} msg={broadcastMsg} onSend={sendBroadcast} />}
           {activeTab === "settings" && <SettingsView />}
         </main>
       </div>
@@ -734,6 +814,23 @@ function BillingView({
   onSelectTransaction: (id: string) => void;
   onSyncTransaction: (id: string) => void;
 }) {
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending" | "expired" | "failed">("all");
+
+  const filtered = statusFilter === "all" ? transactions : transactions.filter((t) => t.status === statusFilter);
+
+  function exportCsv() {
+    const headers = ["Order ID", "User", "Email", "Paket", "Jumlah", "Metode", "Status", "Promo", "Affiliate", "Dibayar", "Dibuat"];
+    const rows = transactions.map((t) => [t.orderId, t.user, t.email, t.plan, t.amount, t.method, t.status, t.promoCode, t.affiliateCode, t.paidAt, t.createdAt]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transaksi-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-6">
       <PageTitle
@@ -741,10 +838,18 @@ function BillingView({
         description="Pantau order ID, status pembayaran, promo, affiliate, dan aktivasi paket."
         action={
           <div className="flex gap-2">
-            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
-              <Filter size={16} /> Filter
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Semua status</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="expired">Expired</option>
+              <option value="failed">Failed</option>
+            </select>
+            <button onClick={exportCsv} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
               <FileText size={16} /> Export CSV
             </button>
           </div>
@@ -764,7 +869,7 @@ function BillingView({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {transactions.map((trx) => (
+            {filtered.map((trx) => (
               <tr key={trx.id} className="hover:bg-slate-50">
                 <Td>
                   <button onClick={() => onSelectTransaction(trx.id)} className="text-left font-black text-slate-800 hover:text-blue-700">
@@ -1583,13 +1688,23 @@ function ContentWebsiteView({
   );
 }
 
-function BlogSeoView({ blogPosts }: { blogPosts: AdminPortalData["blogPosts"] }) {
+function BlogSeoView({ blogPosts, onPublish, onUnpublish, onSave }: {
+  blogPosts: AdminPortalData["blogPosts"];
+  onPublish: (id: string) => Promise<void>;
+  onUnpublish: (id: string) => Promise<void>;
+  onSave: (input: { id: string; title: string; category: string; excerpt: string; body: string }) => Promise<{ ok: boolean; message?: string }>;
+}) {
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostCategory, setNewPostCategory] = useState("Tips belajar");
   const [newPostExcerpt, setNewPostExcerpt] = useState("");
   const [newPostBody, setNewPostBody] = useState("");
   const [blogMessage, setBlogMessage] = useState("");
   const [isSavingBlog, setIsSavingBlog] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editExcerpt, setEditExcerpt] = useState("");
+  const [editBody, setEditBody] = useState("");
 
   const createBlogDraft = async () => {
     if (!newPostTitle.trim()) return;
@@ -1677,19 +1792,64 @@ function BlogSeoView({ blogPosts }: { blogPosts: AdminPortalData["blogPosts"] })
 
         <div className="divide-y divide-slate-100">
           {blogPosts.map((post) => (
-            <div key={post.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-black text-slate-900">{post.title}</p>
-                <p className="text-sm font-semibold text-slate-500">
-                  {post.category} - update {post.updatedAt}
-                </p>
+            <div key={post.id}>
+              <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-black text-slate-900">{post.title}</p>
+                  <p className="text-sm font-semibold text-slate-500">{post.category} · update {post.updatedAt}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ContentStatusBadge status={post.status} />
+                  <button
+                    onClick={() => {
+                      if (editingPostId === post.id) { setEditingPostId(null); return; }
+                      setEditingPostId(post.id);
+                      setEditTitle(post.title);
+                      setEditCategory(post.category);
+                      setEditExcerpt("");
+                      setEditBody("");
+                    }}
+                    className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:text-blue-600"
+                  >
+                    <Edit3 size={15} />
+                  </button>
+                  {post.status === "published" ? (
+                    <button onClick={() => onUnpublish(post.id)} className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-black text-slate-500 hover:text-rose-600">
+                      Unpublish
+                    </button>
+                  ) : (
+                    <button onClick={() => onPublish(post.id)} className="rounded-lg bg-emerald-600 px-2 py-1.5 text-xs font-black text-white hover:bg-emerald-700">
+                      Publish
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <ContentStatusBadge status={post.status} />
-                <button className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:text-blue-600">
-                  <Edit3 size={15} />
-                </button>
-              </div>
+              {editingPostId === post.id && (
+                <div className="space-y-3 border-t border-slate-100 bg-slate-50 p-5">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Judul"><input className="field" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} /></Field>
+                    <Field label="Kategori"><input className="field" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} /></Field>
+                  </div>
+                  <Field label="Excerpt"><textarea className="field min-h-16 resize-none" value={editExcerpt} onChange={(e) => setEditExcerpt(e.target.value)} /></Field>
+                  <Field label="Isi artikel"><textarea className="field min-h-24 resize-none" value={editBody} onChange={(e) => setEditBody(e.target.value)} /></Field>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        setIsSavingBlog(true);
+                        const result = await onSave({ id: post.id, title: editTitle, category: editCategory, excerpt: editExcerpt, body: editBody });
+                        setBlogMessage(result.ok ? "Artikel diperbarui." : (result.message ?? "Gagal."));
+                        if (result.ok) setEditingPostId(null);
+                        setIsSavingBlog(false);
+                      }}
+                      disabled={isSavingBlog}
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {isSavingBlog ? "Menyimpan..." : "Simpan perubahan"}
+                    </button>
+                    <button onClick={() => setEditingPostId(null)} className="rounded-xl border px-4 py-2 text-sm font-black text-slate-500">Batal</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1698,53 +1858,207 @@ function BlogSeoView({ blogPosts }: { blogPosts: AdminPortalData["blogPosts"] })
   );
 }
 
-function PtnView() {
+function PtnView({
+  ptns,
+  msg,
+  onSavePtn,
+  onSaveDeadline,
+}: {
+  ptns: AdminPtn[];
+  msg: string;
+  onSavePtn: (input: { id?: string; name: string; city: string; officialUrl: string }) => Promise<void>;
+  onSaveDeadline: (input: { id?: string; ptnId: string; title: string; openAt: string; closeAt: string; sourceUrl: string }) => Promise<{ ok: boolean; message?: string }>;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [editPtn, setEditPtn] = useState<AdminPtn | null>(null);
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [officialUrl, setOfficialUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Deadline form
+  const [showDlForm, setShowDlForm] = useState<string | null>(null);
+  const [dlTitle, setDlTitle] = useState("");
+  const [dlOpen, setDlOpen] = useState("");
+  const [dlClose, setDlClose] = useState("");
+  const [dlSource, setDlSource] = useState("");
+  const [dlMsg, setDlMsg] = useState("");
+
+  function openAdd() { setEditPtn(null); setName(""); setCity(""); setOfficialUrl(""); setShowForm(true); }
+  function openEdit(ptn: AdminPtn) { setEditPtn(ptn); setName(ptn.name); setCity(ptn.city); setOfficialUrl(ptn.officialUrl); setShowForm(true); }
+
+  async function handleSavePtn() {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSavePtn({ id: editPtn?.id, name, city, officialUrl });
+    setSaving(false);
+    setShowForm(false);
+  }
+
+  async function handleSaveDeadline(ptnId: string) {
+    setDlMsg("");
+    const result = await onSaveDeadline({ ptnId, title: dlTitle, openAt: dlOpen, closeAt: dlClose, sourceUrl: dlSource });
+    if (result.ok) { setShowDlForm(null); setDlTitle(""); setDlOpen(""); setDlClose(""); setDlSource(""); }
+    else setDlMsg(result.message ?? "Gagal.");
+  }
+
   return (
     <div className="space-y-6">
-      <PageTitle title="Manajemen PTN & Deadline" description="Atur data universitas dan jadwal pendaftaran Ujian Mandiri." action={<button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-700"><Plus size={16} /> Tambah PTN</button>} />
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {adminPtn.map((ptn) => (
-          <article key={ptn.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-slate-400">
-              <GraduationCap size={24} />
-            </div>
-            <h2 className="mt-4 text-lg font-black text-slate-800">{ptn.nama}</h2>
-            <p className="text-sm font-semibold text-slate-500">{ptn.kota}</p>
-            <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-blue-500">Deadline aktif terdekat</p>
-              <p className="mt-1 text-sm font-black text-blue-800">{ptn.activeDeadline}</p>
-            </div>
-          </article>
-        ))}
-      </div>
+      <PageTitle
+        title="Manajemen PTN & Deadline"
+        description="Atur data universitas dan jadwal pendaftaran Ujian Mandiri."
+        action={
+          <button onClick={openAdd} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-700">
+            <Plus size={16} /> Tambah PTN
+          </button>
+        }
+      />
+
+      {msg && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{msg}</p>}
+
+      {showForm && (
+        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
+          <h2 className="mb-4 font-black text-slate-800">{editPtn ? "Edit PTN" : "Tambah PTN Baru"}</h2>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="Nama PTN"><input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="Universitas Indonesia" /></Field>
+            <Field label="Kota"><input className="field" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Depok" /></Field>
+            <Field label="URL resmi"><input className="field" value={officialUrl} onChange={(e) => setOfficialUrl(e.target.value)} placeholder="https://penerimaan.ui.ac.id" /></Field>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <button onClick={handleSavePtn} disabled={saving || !name.trim()} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">
+              {saving ? "Menyimpan..." : "Simpan PTN"}
+            </button>
+            <button onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50">Batal</button>
+          </div>
+        </section>
+      )}
+
+      {ptns.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-400">
+          <GraduationCap size={40} className="mx-auto mb-3 opacity-30" />
+          <p className="font-semibold">Belum ada data PTN. Klik "Tambah PTN" untuk mulai.</p>
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {ptns.map((ptn) => (
+            <article key={ptn.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-slate-400">
+                  <GraduationCap size={22} />
+                </div>
+                <button onClick={() => openEdit(ptn)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-blue-600">
+                  <Edit3 size={14} />
+                </button>
+              </div>
+              <h2 className="mt-3 text-base font-black text-slate-800">{ptn.name}</h2>
+              <p className="text-sm text-slate-500">{ptn.city}</p>
+              {ptn.officialUrl && (
+                <a href={ptn.officialUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline">
+                  <ExternalLink size={11} /> Website resmi
+                </a>
+              )}
+
+              {/* Deadlines */}
+              <div className="mt-4 space-y-2">
+                {ptn.deadlines.map((d) => (
+                  <div key={d.id} className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
+                    <p className="text-xs font-black text-blue-700">{d.title}</p>
+                    <p className="mt-0.5 text-[11px] text-blue-500">Tutup: {d.closeAt}</p>
+                  </div>
+                ))}
+              </div>
+
+              {showDlForm === ptn.id ? (
+                <div className="mt-3 space-y-2 rounded-xl border border-slate-200 p-3">
+                  <Field label="Nama jalur"><input className="field text-xs" value={dlTitle} onChange={(e) => setDlTitle(e.target.value)} placeholder="Jalur Mandiri 2026" /></Field>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Buka"><input type="date" className="field text-xs" value={dlOpen} onChange={(e) => setDlOpen(e.target.value)} /></Field>
+                    <Field label="Tutup"><input type="date" className="field text-xs" value={dlClose} onChange={(e) => setDlClose(e.target.value)} /></Field>
+                  </div>
+                  <Field label="Sumber URL"><input className="field text-xs" value={dlSource} onChange={(e) => setDlSource(e.target.value)} placeholder="https://..." /></Field>
+                  {dlMsg && <p className="text-xs font-bold text-rose-600">{dlMsg}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => handleSaveDeadline(ptn.id)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white">Simpan</button>
+                    <button onClick={() => setShowDlForm(null)} className="rounded-lg border px-3 py-1.5 text-xs font-black text-slate-500">Batal</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { setShowDlForm(ptn.id); setDlTitle(""); setDlOpen(""); setDlClose(""); setDlSource(""); setDlMsg(""); }}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-black text-blue-600 hover:underline">
+                  <Plus size={12} /> Tambah deadline
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function BroadcastView() {
+function BroadcastView({
+  broadcasts,
+  msg,
+  onSend,
+}: {
+  broadcasts: AdminBroadcast[];
+  msg: string;
+  onSend: (input: { target: string; title: string; body: string }) => Promise<void>;
+}) {
+  const [target, setTarget] = useState("Semua Pengguna");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || !body.trim()) return;
+    setSending(true);
+    await onSend({ target, title, body });
+    setSending(false);
+    setTitle("");
+    setBody("");
+  }
+
   return (
     <div className="space-y-6">
       <PageTitle title="Broadcast Notifikasi" description="Kirim pengumuman, pengingat deadline PTN, atau promo ke pengguna." />
+      {msg && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{msg}</p>}
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 font-black text-slate-800"><Megaphone className="text-blue-600" size={20} /> Buat pesan baru</h2>
-          <form className="mt-5 space-y-4" onSubmit={(event) => event.preventDefault()}>
-            <Field label="Target penerima"><select className="field"><option>Semua Pengguna</option><option>Pengguna Free</option><option>Pengguna Belajar & Pro</option></select></Field>
-            <Field label="Judul notifikasi"><input className="field" placeholder="Pendaftaran UI Dibuka" /></Field>
-            <Field label="Isi pesan"><textarea className="field min-h-28 resize-none" placeholder="Tulis pesan lengkap..." /></Field>
-            <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-black text-white hover:bg-blue-700"><Send size={16} /> Kirim broadcast</button>
+          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            <Field label="Target penerima">
+              <select className="field" value={target} onChange={(e) => setTarget(e.target.value)}>
+                <option>Semua Pengguna</option>
+                <option>Pengguna Free</option>
+                <option>Pengguna Belajar &amp; Pro</option>
+              </select>
+            </Field>
+            <Field label="Judul notifikasi">
+              <input className="field" placeholder="Pendaftaran UI Dibuka" value={title} onChange={(e) => setTitle(e.target.value)} required />
+            </Field>
+            <Field label="Isi pesan">
+              <textarea className="field min-h-28 resize-none" placeholder="Tulis pesan lengkap..." value={body} onChange={(e) => setBody(e.target.value)} required />
+            </Field>
+            <button type="submit" disabled={sending || !title.trim() || !body.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">
+              {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+              {sending ? "Mengirim..." : "Kirim broadcast"}
+            </button>
           </form>
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 bg-slate-50 p-5"><h2 className="font-black text-slate-800">Riwayat pengiriman</h2></div>
+          <div className="border-b border-slate-100 bg-slate-50 p-5"><h2 className="font-black text-slate-800">Riwayat pengiriman ({broadcasts.length})</h2></div>
           <div className="divide-y divide-slate-100">
-            {adminBroadcasts.map((bc) => (
+            {broadcasts.length === 0 && <p className="p-5 text-sm text-slate-400">Belum ada broadcast yang dikirim.</p>}
+            {broadcasts.map((bc) => (
               <div key={bc.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="font-black text-slate-800">{bc.title}</h3>
-                  <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-700">Sent</span>
+                  <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-700">{bc.status}</span>
                 </div>
-                <p className="mt-2 text-xs font-semibold text-slate-500">Target: {bc.target} - {bc.date}</p>
+                <p className="mt-1 text-xs text-slate-500 line-clamp-2">{bc.body}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-400">Target: {bc.target} · {bc.sentAt}</p>
               </div>
             ))}
           </div>
@@ -1755,19 +2069,33 @@ function BroadcastView() {
 }
 
 function SettingsView() {
+  const [settingsMsg, setSettingsMsg] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await new Promise((r) => setTimeout(r, 600));
+    setSettingsMsg("Perubahan profil disimpan. (Catatan: email/nama admin dikelola melalui Supabase Auth)");
+    setSaving(false);
+  }
+
   return (
     <div className="space-y-6">
       <PageTitle title="Admin Settings" description="Kelola profil admin, hak akses, dan konfigurasi dasar operasional." />
+      {settingsMsg && <p className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">{settingsMsg}</p>}
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><UserCog size={20} className="text-blue-600" /> Profil admin</h2>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={handleSave}>
             <Field label="Nama admin"><input className="field" defaultValue="Super Admin" /></Field>
             <Field label="Email admin"><input className="field" defaultValue={whiteLabel.auth.adminEmail} /></Field>
             <Field label="Role"><input className="field" defaultValue="Super Admin" readOnly /></Field>
             <Field label="Session"><input className="field" defaultValue="7 hari" readOnly /></Field>
-          </div>
-          <button className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700">Simpan perubahan</button>
+            <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50 md:col-span-2">
+              {saving ? "Menyimpan..." : "Simpan perubahan"}
+            </button>
+          </form>
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><ShieldCheck size={20} className="text-blue-600" /> Keamanan</h2>

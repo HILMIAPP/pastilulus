@@ -1,5 +1,28 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export type AdminPtn = {
+  id: string;
+  name: string;
+  city: string;
+  officialUrl: string;
+  deadlines: Array<{
+    id: string;
+    title: string;
+    openAt: string;
+    closeAt: string;
+    sourceUrl: string;
+  }>;
+};
+
+export type AdminBroadcast = {
+  id: string;
+  target: string;
+  title: string;
+  body: string;
+  status: string;
+  sentAt: string;
+};
+
 export type AdminPortalData = {
   users: Array<{
     id: string;
@@ -62,6 +85,8 @@ export type AdminPortalData = {
     updatedAt: string;
     owner: string;
   }>;
+  ptns: AdminPtn[];
+  broadcasts: AdminBroadcast[];
   crmConversations: Array<{
     id: string;
     channel: "website" | "whatsapp";
@@ -111,7 +136,7 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
   const supabase = createAdminClient();
   if (!supabase) return {};
 
-  const [profiles, transactions, promos, affiliates, blogPosts, siteContent, examSessions, crmConversations, crmMessages] = await Promise.all([
+  const [profiles, transactions, promos, affiliates, blogPosts, siteContent, examSessions, crmConversations, crmMessages, ptns, ptnDeadlines, broadcasts] = await Promise.all([
     supabase.from("profiles").select("id,full_name,email,tier,role,target_ptns,created_at,updated_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("payment_transactions").select("id,order_id,user_id,customer_name,customer_email,plan,amount,payment_method,status,promo_code,affiliate_code,paid_at,created_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("promo_codes").select("id,code,discount_type,discount_value,usage_limit,used_count,expires_at,status").order("created_at", { ascending: false }).limit(100),
@@ -129,6 +154,9 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
       .select("id,conversation_id,sender_type,body,created_at")
       .order("created_at", { ascending: true })
       .limit(1000),
+    supabase.from("ptns").select("id,name,city,official_url").order("name", { ascending: true }),
+    supabase.from("ptn_deadlines").select("id,ptn_id,title,open_at,close_at,source_url").order("close_at", { ascending: true }),
+    supabase.from("broadcast_messages").select("id,target,title,body,status,sent_at").order("sent_at", { ascending: false }).limit(50),
   ]);
 
   const scoreByUser = new Map<string, { count: number; total: number }>();
@@ -217,6 +245,29 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
       status: section.status ?? "draft",
       updatedAt: formatDate(section.updated_at),
       owner: section.owner ?? "Content",
+    })),
+    ptns: (ptns.data ?? []).map((ptn) => ({
+      id: ptn.id,
+      name: ptn.name,
+      city: ptn.city ?? "",
+      officialUrl: ptn.official_url ?? "",
+      deadlines: (ptnDeadlines.data ?? [])
+        .filter((d) => d.ptn_id === ptn.id)
+        .map((d) => ({
+          id: d.id,
+          title: d.title ?? "",
+          openAt: d.open_at ? new Date(d.open_at).toLocaleDateString("id-ID") : "-",
+          closeAt: d.close_at ? new Date(d.close_at).toLocaleDateString("id-ID") : "-",
+          sourceUrl: d.source_url ?? "",
+        })),
+    })),
+    broadcasts: (broadcasts.data ?? []).map((bc) => ({
+      id: bc.id,
+      target: bc.target ?? "Semua",
+      title: bc.title ?? "",
+      body: bc.body ?? "",
+      status: bc.status ?? "sent",
+      sentAt: formatDate(bc.sent_at),
     })),
     crmConversations: (crmConversations.data ?? []).map((conversation) => ({
       id: conversation.id,

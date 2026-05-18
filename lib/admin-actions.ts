@@ -303,3 +303,149 @@ export async function updateCrmConversationStatusAction(input: {
   revalidatePath("/admin");
   return { ok: true };
 }
+
+export async function upsertPtnAction(input: {
+  id?: string;
+  name: string;
+  city: string;
+  officialUrl: string;
+}) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const now = new Date().toISOString();
+  const payload = {
+    name: input.name.trim(),
+    city: input.city.trim(),
+    official_url: input.officialUrl.trim() || null,
+    has_mandiri: true,
+    updated_at: now,
+  };
+
+  const { error } = input.id
+    ? await supabase.from("ptns").update(payload).eq("id", input.id)
+    : await supabase.from("ptns").insert({ ...payload, created_at: now });
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function upsertPtnDeadlineAction(input: {
+  id?: string;
+  ptnId: string;
+  title: string;
+  openAt: string;
+  closeAt: string;
+  sourceUrl: string;
+}) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const now = new Date().toISOString();
+  const payload = {
+    ptn_id: input.ptnId,
+    title: input.title.trim(),
+    open_at: input.openAt ? new Date(input.openAt).toISOString() : null,
+    close_at: input.closeAt ? new Date(input.closeAt).toISOString() : null,
+    source_url: input.sourceUrl.trim() || null,
+    verified_at: now,
+  };
+
+  const { error } = input.id
+    ? await supabase.from("ptn_deadlines").update(payload).eq("id", input.id)
+    : await supabase.from("ptn_deadlines").insert({ ...payload, created_at: now });
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/siswa/info-ptn");
+  return { ok: true };
+}
+
+export async function sendBroadcastAction(input: {
+  target: string;
+  title: string;
+  body: string;
+}) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  if (!input.title.trim() || !input.body.trim()) {
+    return { ok: false, message: "Judul dan isi pesan wajib diisi." };
+  }
+
+  const { error } = await supabase.from("broadcast_messages").insert({
+    target: input.target,
+    title: input.title.trim(),
+    body: input.body.trim(),
+    status: "sent",
+    sent_at: new Date().toISOString(),
+  });
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function publishBlogPostAction(id: string) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const { error } = await supabase
+    .from("blog_posts")
+    .update({ status: "published", published_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/blog");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function unpublishBlogPostAction(id: string) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const { error } = await supabase
+    .from("blog_posts")
+    .update({ status: "draft", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/blog");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function updateBlogPostAction(input: {
+  id: string;
+  title: string;
+  category: string;
+  excerpt: string;
+  body: string;
+}) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const { error } = await supabase
+    .from("blog_posts")
+    .update({
+      title: input.title.trim(),
+      category: input.category.trim(),
+      excerpt: input.excerpt.trim(),
+      body: input.body.trim(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.id);
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/blog");
+  revalidatePath("/admin");
+  return { ok: true };
+}
