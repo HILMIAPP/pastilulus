@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
-import { billingPlans, formatIdr } from "@/lib/billing";
 import { signOutAction } from "@/lib/auth-actions";
 import {
   createAffiliatePartnerAction,
@@ -68,195 +67,12 @@ type AdminTab = "dashboard" | "users" | "soal" | "content" | "blog" | "crm" | "p
 type PaymentStatus = "paid" | "pending" | "expired" | "failed";
 type SoalStatus = "review" | "active" | "rejected";
 
-const adminUsers = [
-  {
-    id: "usr-1",
-    name: "Budi Santoso",
-    email: "budi@siswa.com",
-    tier: "pro",
-    joined: "12 Mei 2026",
-    status: "active",
-    target: "SIMAK UI",
-    tryouts: 8,
-    avgScore: 742,
-    lastSeen: "2 menit lalu",
-  },
-  {
-    id: "usr-2",
-    name: "Siti Aminah",
-    email: "siti.a@siswa.com",
-    tier: "belajar",
-    joined: "10 Mei 2026",
-    status: "active",
-    target: "SM-ITB",
-    tryouts: 4,
-    avgScore: 681,
-    lastSeen: "15 menit lalu",
-  },
-  {
-    id: "usr-3",
-    name: "Andi Saputra",
-    email: "andisap@gmail.com",
-    tier: "free",
-    joined: "09 Mei 2026",
-    status: "active",
-    target: "UM UGM",
-    tryouts: 1,
-    avgScore: 512,
-    lastSeen: "1 jam lalu",
-  },
-  {
-    id: "usr-4",
-    name: "Rina Wijaya",
-    email: "rinawjy@yahoo.com",
-    tier: "pro",
-    joined: "05 Mei 2026",
-    status: "active",
-    target: "SMUP UNPAD",
-    tryouts: 11,
-    avgScore: 778,
-    lastSeen: "Kemarin",
-  },
-];
+type TransactionRow = AdminPortalData["transactions"][number];
+type UserRow = AdminPortalData["users"][number];
+type PromoRow = AdminPortalData["promos"][number];
+type AffiliateRow = AdminPortalData["affiliates"][number];
+type SoalRow = { id: string; ptn: string; mapel: string; tingkat: string; creator: string; status: SoalStatus; date: string; prompt: string; question: string; answer: string; reviewNote: string; };
 
-const initialTransactions = [
-  {
-    id: "trx-1",
-    orderId: "PL-pro-1778567400001",
-    userId: "usr-1",
-    user: "Budi Santoso",
-    email: "budi@siswa.com",
-    plan: "Pro",
-    amount: formatIdr(billingPlans[1].earlyBirdPrice),
-    method: "QRIS",
-    status: "paid" as PaymentStatus,
-    promoCode: "HEMATUM",
-    affiliateCode: "PARTNER01",
-    paidAt: "12 Mei 2026 14:30",
-    createdAt: "12 Mei 2026 14:22",
-  },
-  {
-    id: "trx-2",
-    orderId: "PL-belajar-1778552100002",
-    userId: "usr-2",
-    user: "Siti Aminah",
-    email: "siti.a@siswa.com",
-    plan: "Belajar",
-    amount: formatIdr(billingPlans[0].earlyBirdPrice),
-    method: "VA BCA",
-    status: "pending" as PaymentStatus,
-    promoCode: "-",
-    affiliateCode: "KAKRINA",
-    paidAt: "-",
-    createdAt: "12 Mei 2026 10:15",
-  },
-  {
-    id: "trx-3",
-    orderId: "PL-pro-1777933200003",
-    userId: "usr-4",
-    user: "Rina Wijaya",
-    email: "rinawjy@yahoo.com",
-    plan: "Pro",
-    amount: formatIdr(billingPlans[1].earlyBirdPrice),
-    method: "GoPay",
-    status: "paid" as PaymentStatus,
-    promoCode: "TRYOUT25",
-    affiliateCode: "-",
-    paidAt: "05 Mei 2026 09:03",
-    createdAt: "05 Mei 2026 09:00",
-  },
-  {
-    id: "trx-4",
-    orderId: "PL-belajar-1775964300004",
-    userId: "usr-3",
-    user: "Andi Saputra",
-    email: "andisap@gmail.com",
-    plan: "Belajar",
-    amount: formatIdr(billingPlans[0].earlyBirdPrice),
-    method: "VA Mandiri",
-    status: "expired" as PaymentStatus,
-    promoCode: "-",
-    affiliateCode: "-",
-    paidAt: "-",
-    createdAt: "10 Apr 2026 16:45",
-  },
-];
-
-const initialSoal = [
-  {
-    id: "soal-1",
-    ptn: "SIMAK UI",
-    mapel: "Matematika Dasar",
-    tingkat: "Sulit",
-    creator: "AI Generator",
-    status: "review" as SoalStatus,
-    date: "12 Mei 2026",
-    prompt: "Persamaan kuadrat dengan akar rasional",
-    question: "Jika x^2 - 5x + 6 = 0, maka jumlah akar-akarnya adalah ...",
-    answer: "5",
-    reviewNote: "",
-  },
-  {
-    id: "soal-2",
-    ptn: "SM-ITB",
-    mapel: "Penalaran Logis",
-    tingkat: "Sedang",
-    creator: "AI Generator",
-    status: "review" as SoalStatus,
-    date: "12 Mei 2026",
-    prompt: "Silogisme himpunan",
-    question: "Semua peserta tryout belajar. Sebagian yang belajar lulus. Kesimpulan paling aman adalah ...",
-    answer: "Sebagian yang belajar lulus",
-    reviewNote: "",
-  },
-  {
-    id: "soal-3",
-    ptn: "UM UGM",
-    mapel: "Bahasa Inggris",
-    tingkat: "Mudah",
-    creator: "Admin Rina",
-    status: "active" as SoalStatus,
-    date: "10 Mei 2026",
-    prompt: "Main idea paragraph",
-    question: "What is the main idea of the passage?",
-    answer: "The passage discusses the impact of study planning.",
-    reviewNote: "Sudah lolos QA.",
-  },
-];
-
-const initialPromos = [
-  { id: "promo-1", code: "HEMATUM", type: "Diskon nominal", value: "Rp 10.000", limit: 500, used: 84, expires: "30 Jun 2026", status: "active" },
-  { id: "promo-2", code: "TRYOUT25", type: "Diskon persen", value: "25%", limit: 300, used: 122, expires: "20 Mei 2026", status: "active" },
-];
-
-const initialAffiliates = [
-  { id: "aff-1", code: "PARTNER01", name: "Kak Rina Edu", commission: "15%", clicks: 1240, conversions: 38, revenue: "Rp 1.420.000", status: "active" },
-  { id: "aff-2", code: "KAKRINA", name: "Rina Wijaya", commission: "10%", clicks: 580, conversions: 12, revenue: "Rp 348.000", status: "active" },
-];
-
-const adminPtn = [
-  { id: "ptn-1", nama: "Institut Teknologi Bandung", kota: "Bandung", activeDeadline: "10 Jun 2026" },
-  { id: "ptn-2", nama: "Universitas Indonesia", kota: "Depok", activeDeadline: "20 Jun 2026" },
-  { id: "ptn-3", nama: "Universitas Gadjah Mada", kota: "Yogyakarta", activeDeadline: "15 Jun 2026" },
-  { id: "ptn-4", nama: "Universitas Padjadjaran", kota: "Sumedang", activeDeadline: "25 Mei 2026" },
-];
-
-const adminBroadcasts = [
-  { id: "bc-1", title: "Pendaftaran SIMAK UI Dibuka", target: "Semua User", date: "01 Jun 2026" },
-  { id: "bc-2", title: "Promo Flash Sale 50%", target: "User Free", date: "10 Mei 2026" },
-];
-
-const landingSections = [
-  { id: "hero", name: "Hero landing", status: "published", updatedAt: "15 Mei 2026", owner: "Marketing" },
-  { id: "features", name: "Section fitur", status: "published", updatedAt: "14 Mei 2026", owner: "Product" },
-  { id: "pricing", name: "CTA harga", status: "published", updatedAt: "14 Mei 2026", owner: "Growth" },
-];
-
-const blogPosts = [
-  { id: "blog-1", title: "Strategi 14 hari mengejar Ujian Mandiri", category: "Strategi belajar", status: "published", updatedAt: "13 Mei 2026" },
-  { id: "blog-2", title: "Kenapa soal mandiri terasa beda dari SNBT?", category: "Analisis soal", status: "published", updatedAt: "12 Mei 2026" },
-  { id: "blog-3", title: "Checklist sebelum daftar jalur mandiri PTN", category: "Info PTN", status: "draft", updatedAt: "10 Mei 2026" },
-];
 
 const ADMIN_NAV: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -275,19 +91,19 @@ const ADMIN_NAV: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[]
 export default function AdminPortal({ initialData = {} }: { initialData?: Partial<AdminPortalData> }) {
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const users = initialData.users?.length ? initialData.users : adminUsers;
-  const landingContent = initialData.landingSections?.length ? initialData.landingSections : landingSections;
-  const blogContent = initialData.blogPosts?.length ? initialData.blogPosts : blogPosts;
+  const users = initialData.users ?? [];
+  const landingContent = initialData.landingSections ?? [];
+  const blogContent = initialData.blogPosts ?? [];
   const initialCrmConversations = initialData.crmConversations ?? [];
-  const [transactions, setTransactions] = useState(initialData.transactions?.length ? initialData.transactions : initialTransactions);
+  const [transactions, setTransactions] = useState(initialData.transactions ?? []);
   const [crmConversations, setCrmConversations] = useState(initialCrmConversations);
   const [selectedCrmId, setSelectedCrmId] = useState(initialCrmConversations[0]?.id ?? "");
-  const [selectedTransactionId, setSelectedTransactionId] = useState((initialData.transactions?.[0] ?? initialTransactions[0])?.id ?? "");
-  const [selectedUserId, setSelectedUserId] = useState((initialData.users?.[0] ?? adminUsers[0])?.id ?? "");
-  const [soalData, setSoalData] = useState(initialSoal);
-  const [selectedSoalId, setSelectedSoalId] = useState(initialSoal[0]?.id ?? "");
-  const [promos, setPromos] = useState(initialData.promos?.length ? initialData.promos : initialPromos);
-  const [affiliates, setAffiliates] = useState(initialData.affiliates?.length ? initialData.affiliates : initialAffiliates);
+  const [selectedTransactionId, setSelectedTransactionId] = useState(initialData.transactions?.[0]?.id ?? "");
+  const [selectedUserId, setSelectedUserId] = useState(initialData.users?.[0]?.id ?? "");
+  const [soalData, setSoalData] = useState<SoalRow[]>([]);
+  const [selectedSoalId, setSelectedSoalId] = useState("");
+  const [promos, setPromos] = useState(initialData.promos ?? []);
+  const [affiliates, setAffiliates] = useState(initialData.affiliates ?? []);
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoDiscountType, setNewPromoDiscountType] = useState<"nominal" | "percent">("nominal");
   const [newPromoDiscountValue, setNewPromoDiscountValue] = useState("5000");
@@ -809,8 +625,8 @@ function BillingView({
   onSelectTransaction,
   onSyncTransaction,
 }: {
-  transactions: typeof initialTransactions;
-  selectedTransaction: (typeof initialTransactions)[number];
+  transactions: TransactionRow[];
+  selectedTransaction: TransactionRow | undefined;
   onSelectTransaction: (id: string) => void;
   onSyncTransaction: (id: string) => void;
 }) {
@@ -905,24 +721,30 @@ function BillingView({
         </TableCard>
 
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-wide text-blue-600">Detail transaksi</p>
-          <h2 className="mt-2 break-words text-xl font-black text-slate-950">{selectedTransaction.orderId}</h2>
-          <div className="mt-5 space-y-3 text-sm">
-            <DetailRow label="Pengguna" value={selectedTransaction.user} />
-            <DetailRow label="Email" value={selectedTransaction.email} />
-            <DetailRow label="Paket" value={selectedTransaction.plan} />
-            <DetailRow label="Nominal" value={selectedTransaction.amount} />
-            <DetailRow label="Metode" value={selectedTransaction.method} />
-            <DetailRow label="Kode promo" value={selectedTransaction.promoCode} />
-            <DetailRow label="Kode affiliate" value={selectedTransaction.affiliateCode} />
-            <DetailRow label="Dibayar" value={selectedTransaction.paidAt} />
-          </div>
-          <button
-            onClick={() => onSyncTransaction(selectedTransaction.id)}
-            className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800"
-          >
-            Sinkron status pembayaran
-          </button>
+          {selectedTransaction ? (
+            <>
+              <p className="text-sm font-black uppercase tracking-wide text-blue-600">Detail transaksi</p>
+              <h2 className="mt-2 break-words text-xl font-black text-slate-950">{selectedTransaction.orderId}</h2>
+              <div className="mt-5 space-y-3 text-sm">
+                <DetailRow label="Pengguna" value={selectedTransaction.user} />
+                <DetailRow label="Email" value={selectedTransaction.email} />
+                <DetailRow label="Paket" value={selectedTransaction.plan} />
+                <DetailRow label="Nominal" value={selectedTransaction.amount} />
+                <DetailRow label="Metode" value={selectedTransaction.method} />
+                <DetailRow label="Kode promo" value={selectedTransaction.promoCode} />
+                <DetailRow label="Kode affiliate" value={selectedTransaction.affiliateCode} />
+                <DetailRow label="Dibayar" value={selectedTransaction.paidAt} />
+              </div>
+              <button
+                onClick={() => onSyncTransaction(selectedTransaction.id)}
+                className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800"
+              >
+                Sinkron status pembayaran
+              </button>
+            </>
+          ) : (
+            <p className="text-sm font-semibold text-slate-400">Pilih transaksi untuk melihat detail.</p>
+          )}
         </aside>
       </div>
     </div>
@@ -955,8 +777,8 @@ function PromoAffiliateView({
   onCreatePromo,
   onCreateAffiliate,
 }: {
-  promos: typeof initialPromos;
-  affiliates: typeof initialAffiliates;
+  promos: PromoRow[];
+  affiliates: AffiliateRow[];
   newPromoCode: string;
   newPromoDiscountType: "nominal" | "percent";
   newPromoDiscountValue: string;
@@ -1095,9 +917,9 @@ function UsersView({
   onSelectUser,
   onOpenBilling,
 }: {
-  users: typeof adminUsers;
-  selectedUser: (typeof adminUsers)[number];
-  userTransactions: typeof initialTransactions;
+  users: UserRow[];
+  selectedUser: UserRow | undefined;
+  userTransactions: TransactionRow[];
   onSelectUser: (id: string) => void;
   onOpenBilling: () => void;
 }) {
@@ -1138,6 +960,9 @@ function UsersView({
         </TableCard>
 
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          {!selectedUser ? (
+            <p className="text-sm font-semibold text-slate-400">Pilih pengguna untuk melihat detail.</p>
+          ) : (<>
           <p className="text-sm font-black uppercase tracking-wide text-blue-600">User detail</p>
           <h2 className="mt-2 text-xl font-black text-slate-950">{selectedUser.name}</h2>
           <p className="text-sm font-semibold text-slate-500">{selectedUser.email}</p>
@@ -1161,6 +986,7 @@ function UsersView({
           <button onClick={onOpenBilling} className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">
             Buka billing user
           </button>
+          </>)}
         </aside>
       </div>
     </div>
@@ -1174,8 +1000,8 @@ function ReviewSoalView({
   onApprove,
   onReject,
 }: {
-  soalData: typeof initialSoal;
-  selectedSoal: (typeof initialSoal)[number];
+  soalData: SoalRow[];
+  selectedSoal: SoalRow | undefined;
   onSelectSoal: (id: string) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -1217,6 +1043,9 @@ function ReviewSoalView({
         </TableCard>
 
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          {!selectedSoal ? (
+            <p className="text-sm font-semibold text-slate-400">Pilih soal untuk preview.</p>
+          ) : (<>
           <p className="text-sm font-black uppercase tracking-wide text-blue-600">Preview soal</p>
           <h2 className="mt-2 text-xl font-black text-slate-950">{selectedSoal.ptn} - {selectedSoal.mapel}</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">{selectedSoal.prompt}</p>
@@ -1242,6 +1071,7 @@ function ReviewSoalView({
               Reject
             </button>
           </div>
+          </>)}
         </aside>
       </div>
     </div>

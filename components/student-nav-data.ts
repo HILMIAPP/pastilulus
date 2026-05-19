@@ -19,7 +19,7 @@ export const studentNavItems = [
   { href: "/siswa/rasionalisasi", label: "Rasionalisasi", icon: BarChart3 },
   { href: "/siswa/info-ptn", label: "Info PTN", icon: CalendarDays },
   { href: "/siswa/jadwal", label: "Jadwal", icon: CalendarClock },
-  { href: "/harga", label: "Upgrade Pro", icon: Sparkles },
+  { href: "/siswa/langganan", label: "Langganan", icon: Sparkles },
 ] as const;
 
 export const studentAccountNavItems = [
@@ -37,6 +37,6 @@ export function isStudentNavActive(pathname: string, href: string) {
   if (href === "/siswa/jadwal") return pathname.startsWith("/siswa/jadwal");
   if (href === "/siswa/profil") return pathname.startsWith("/siswa/profil");
   if (href === "/siswa/transaksi") return pathname.startsWith("/siswa/transaksi");
-  if (href === "/harga") return pathname === "/harga";
+  if (href === "/siswa/langganan") return pathname.startsWith("/siswa/langganan");
   return false;
 }

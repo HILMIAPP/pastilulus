@@ -6,32 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { getPublicBlogPosts } from "@/lib/public-content";
 import { site } from "@/lib/site-config";
 
-const fallbackPosts = [
-  {
-    id: "fallback-1",
-    slug: "strategi-14-hari-ujian-mandiri",
-    title: "Strategi 14 hari mengejar Ujian Mandiri",
-    category: "Strategi belajar",
-    date: "13 Mei 2026",
-    excerpt: "Cara menyusun prioritas latihan saat waktu sudah mepet, tanpa belajar acak setiap hari.",
-  },
-  {
-    id: "fallback-2",
-    slug: "kenapa-soal-mandiri-beda-snbt",
-    title: "Kenapa soal mandiri terasa beda dari SNBT?",
-    category: "Analisis soal",
-    date: "12 Mei 2026",
-    excerpt: "Beberapa kampus punya gaya soal dan tekanan waktu yang berbeda. Ini cara membacanya.",
-  },
-  {
-    id: "fallback-3",
-    slug: "checklist-sebelum-daftar-jalur-mandiri-ptn",
-    title: "Checklist sebelum daftar jalur mandiri PTN",
-    category: "Info PTN",
-    date: "10 Mei 2026",
-    excerpt: "Dokumen, jadwal, biaya, dan link resmi yang perlu dicek sebelum klik submit.",
-  },
-];
+const fallbackPosts: { id: string; slug: string; title: string; category: string; date: string; excerpt: string }[] = [];
 
 export const metadata = {
   title: "Blog & Tips Ujian Mandiri",

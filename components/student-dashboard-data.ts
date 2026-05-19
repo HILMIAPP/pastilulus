@@ -4,13 +4,13 @@ export { learningModules };
 
 export const promoSlides = [
   {
-    title: "Tryout Akbar Nasional Berhadiah",
-    desc: "Uji kemampuanmu bersama ribuan siswa lain. Gratis!",
+    title: "Harga Early Bird Masih Tersedia",
+    desc: "Paket Belajar mulai Rp 25.000 — harga naik setelah 500 slot habis.",
     image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1200&auto=format&fit=crop",
   },
   {
-    title: "Flash Sale Paket Belajar",
-    desc: "Gunakan kode LOLOSPTN26. Berlaku hingga besok malam.",
+    title: "Tryout UM PTKIN 2026 Sudah Hadir",
+    desc: "5 paket soal HOTS khusus UM-PTKIN. Mulai latihan sekarang.",
     image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop",
   },
   {
