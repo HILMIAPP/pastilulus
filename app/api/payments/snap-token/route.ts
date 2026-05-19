@@ -1,4 +1,5 @@
-import { getBillingPlan } from "@/lib/billing";
+import { getBillingPlan, calcCurrentPrice } from "@/lib/billing";
+import { getPlanBuyerCounts } from "@/lib/supabase/plan-stats";
 import { getCurrentSession } from "@/lib/session";
 import { site } from "@/lib/site-config";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as SnapTokenRequest;
   const plan = getBillingPlan(body.planId ?? null);
+  const buyerCounts = await getPlanBuyerCounts();
+  const planCurrentPrice = calcCurrentPrice(plan, buyerCounts[plan.id]);
   // UUID suffix prevents duplicate order_id on concurrent requests with the same millisecond timestamp.
   const orderId = `PL-${plan.id}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
   const requestedPromoCode = normalizeTrackingCode(body.promoCode);
@@ -88,8 +91,8 @@ export async function POST(request: Request) {
           : Promise.resolve({ data: null }),
       ])
     : [{ data: null }, { data: null }];
-  const discountAmount = calculateDiscount(plan.price, promo);
-  const finalAmount = Math.max(0, plan.price - discountAmount);
+  const discountAmount = calculateDiscount(planCurrentPrice, promo);
+  const finalAmount = Math.max(0, planCurrentPrice - discountAmount);
   const promoCode = discountAmount > 0 ? promo?.code : undefined;
   const affiliateCode = affiliate?.code;
   const trackingMetadata = JSON.stringify({ promoCode, affiliateCode, discountAmount });
@@ -109,7 +112,7 @@ export async function POST(request: Request) {
         affiliate_code: affiliateCode,
         raw_payload: {
           source: "snap-token",
-          originalAmount: plan.price,
+          originalAmount: planCurrentPrice,
           discountAmount,
           requestedPromoCode,
           requestedAffiliateCode,

@@ -1,5 +1,6 @@
 import { soalUmPaket1, soalUmPaket2 } from "@/lib/um-question-bank";
 import { soalUm10PtnPaket } from "@/lib/um-question-bank-10-ptn";
+import { soalUmptkinPaket1, soalUmptkinPaket2, soalUmptkinPaket3, soalUmptkinPaket4, soalUmptkinPaket5 } from "@/lib/umptkin-question-bank";
 
 /** Konten try out hasil impor dari folder SOAL UM. */
 
@@ -172,4 +173,67 @@ export const soalPaketById: Record<string, TryoutQuestion[]> = {
   "paket-1": soalPaket1,
   "paket-2": soalPaket2,
   ...soalUm10PtnPaket,
+  "umptkin-1": soalUmptkinPaket1,
+  "umptkin-2": soalUmptkinPaket2,
+  "umptkin-3": soalUmptkinPaket3,
+  "umptkin-4": soalUmptkinPaket4,
+  "umptkin-5": soalUmptkinPaket5,
 };
+
+export const tryoutUmptkinPaket: TryoutPaket[] = [
+  {
+    id: "umptkin-1",
+    slug: "umptkin-1",
+    title: "UM PTKIN HOTS 2026 — Paket 1",
+    subtitle: "121 soal HOTS: Penalaran Akademik, Matematika, Literasi, Agama Islam",
+    soalCount: 121,
+    durasiMenit: 120,
+    pola: "Komposisi resmi UM-PTKIN: Sub Tes 1–5 dengan bobot HOTS tinggi.",
+    akses: "gratis",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "umptkin-2",
+    slug: "umptkin-2",
+    title: "UM PTKIN HOTS 2026 — Paket 2",
+    subtitle: "121 soal HOTS variasi 2 — distribusi subtes sesuai blueprint UM-PTKIN",
+    soalCount: 121,
+    durasiMenit: 120,
+    pola: "Penekanan pada Literasi Bahasa Indonesia dan Penalaran Akademik.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "umptkin-3",
+    slug: "umptkin-3",
+    title: "UM PTKIN HOTS 2026 — Paket 3",
+    subtitle: "121 soal HOTS variasi 3 — penguatan Penalaran Matematika & Agama",
+    soalCount: 121,
+    durasiMenit: 120,
+    pola: "Fokus Penalaran Matematika dan Pengetahuan Agama Islam tingkat lanjut.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "umptkin-4",
+    slug: "umptkin-4",
+    title: "UM PTKIN HOTS 2026 — Paket 4",
+    subtitle: "121 soal HOTS variasi 4 — gabungan subtes dengan intensitas tinggi",
+    soalCount: 121,
+    durasiMenit: 120,
+    pola: "Semua subtes dengan variasi soal kontekstual dan analitis.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+  {
+    id: "umptkin-5",
+    slug: "umptkin-5",
+    title: "UM PTKIN HOTS 2026 — Paket 5",
+    subtitle: "121 soal HOTS variasi 5 — simulasi paling komprehensif",
+    soalCount: 121,
+    durasiMenit: 120,
+    pola: "Paket final: distribusi subtes merata dengan soal HOTS paling menantang.",
+    akses: "belajar_pro",
+    scoring: "Benar +4, kosong 0, salah -1",
+  },
+];

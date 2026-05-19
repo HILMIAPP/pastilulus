@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
-import { billingPlans } from "@/lib/billing";
+import { billingPlans, formatIdr } from "@/lib/billing";
 import { signOutAction } from "@/lib/auth-actions";
 import {
   createAffiliatePartnerAction,
@@ -127,7 +127,7 @@ const initialTransactions = [
     user: "Budi Santoso",
     email: "budi@siswa.com",
     plan: "Pro",
-    amount: billingPlans[1].priceLabel,
+    amount: formatIdr(billingPlans[1].earlyBirdPrice),
     method: "QRIS",
     status: "paid" as PaymentStatus,
     promoCode: "HEMATUM",
@@ -142,7 +142,7 @@ const initialTransactions = [
     user: "Siti Aminah",
     email: "siti.a@siswa.com",
     plan: "Belajar",
-    amount: billingPlans[0].priceLabel,
+    amount: formatIdr(billingPlans[0].earlyBirdPrice),
     method: "VA BCA",
     status: "pending" as PaymentStatus,
     promoCode: "-",
@@ -157,7 +157,7 @@ const initialTransactions = [
     user: "Rina Wijaya",
     email: "rinawjy@yahoo.com",
     plan: "Pro",
-    amount: billingPlans[1].priceLabel,
+    amount: formatIdr(billingPlans[1].earlyBirdPrice),
     method: "GoPay",
     status: "paid" as PaymentStatus,
     promoCode: "TRYOUT25",
@@ -172,7 +172,7 @@ const initialTransactions = [
     user: "Andi Saputra",
     email: "andisap@gmail.com",
     plan: "Belajar",
-    amount: billingPlans[0].priceLabel,
+    amount: formatIdr(billingPlans[0].earlyBirdPrice),
     method: "VA Mandiri",
     status: "expired" as PaymentStatus,
     promoCode: "-",

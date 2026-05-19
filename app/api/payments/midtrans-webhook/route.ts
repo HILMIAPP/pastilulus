@@ -85,7 +85,11 @@ export async function POST(request: Request) {
     if (shouldApplyPaidSideEffects && transaction?.user_id) {
       const periodStart = new Date();
       const periodEnd = new Date(periodStart);
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      if (transaction.plan === "pro") {
+        periodEnd.setFullYear(2099, 11, 31);
+      } else {
+        periodEnd.setMonth(periodEnd.getMonth() + 6);
+      }
 
       await supabaseAdmin.from("subscriptions").upsert(
         {

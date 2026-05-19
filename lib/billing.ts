@@ -1,18 +1,16 @@
 export type BillingPlan = {
   id: "belajar" | "pro";
   name: string;
-  price: number;
-  priceLabel: string;
-  cadence: string;
+  displayName: string;
+  earlyBirdPrice: number;
+  originalPrice: number;
+  earlyBirdQuota: number;
+  priceStepSize: number;
+  cadenceLabel: string;
   features: string[];
 };
 
-function planPrice(envValue: string | undefined, fallback: number) {
-  const value = Number(envValue);
-  return Number.isFinite(value) && value >= 0 ? value : fallback;
-}
-
-function formatIdr(value: number) {
+export function formatIdr(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
@@ -22,40 +20,63 @@ function formatIdr(value: number) {
     .replace(/\s/g, " ");
 }
 
+export function calcCurrentPrice(plan: BillingPlan, buyerCount: number): number {
+  if (buyerCount < plan.earlyBirdQuota) return plan.earlyBirdPrice;
+  const stepsOver = Math.floor((buyerCount - plan.earlyBirdQuota) / plan.priceStepSize);
+  const price = plan.earlyBirdPrice * Math.pow(1.05, stepsOver);
+  return Math.min(Math.round(price / 1000) * 1000, plan.originalPrice);
+}
+
+export function calcQuotaPct(plan: BillingPlan, buyerCount: number): number {
+  return Math.min(Math.round((buyerCount / plan.earlyBirdQuota) * 100), 100);
+}
+
 export const freePlan = {
   id: "free",
-  name: "Free",
+  name: "Gratis",
   price: 0,
   priceLabel: "Rp 0",
-  cadence: "/bulan",
-  features: ["Try out terbatas dan info PTN dasar", "Reminder deadline terbatas", "Akses contoh materi belajar"],
+  cadence: "selamanya",
+  features: [
+    "1 paket tryout Ujian Mandiri PTN",
+    "1 paket tryout UM PTKIN",
+    "Materi belajar modul pertama tiap jalur",
+    "Info PTN & jadwal ujian",
+  ],
 };
 
 export const billingPlans: BillingPlan[] = [
   {
     id: "belajar",
     name: "Belajar",
-    price: planPrice(process.env.NEXT_PUBLIC_PLAN_BELAJAR_PRICE, 29000),
-    priceLabel: formatIdr(planPrice(process.env.NEXT_PUBLIC_PLAN_BELAJAR_PRICE, 29000)),
-    cadence: "/bulan",
+    displayName: "Belajar",
+    earlyBirdPrice: 25000,
+    originalPrice: 150000,
+    earlyBirdQuota: 500,
+    priceStepSize: 25,
+    cadenceLabel: "6 bulan",
     features: [
-      "Soal dan simulasi tanpa batas praktis",
-      "Info PTN lengkap dan deadline tracker",
-      "Jadwal belajar personal",
-      "Try out paket UM produksi",
+      "Semua paket tryout Ujian Mandiri PTN",
+      "Semua paket tryout UM PTKIN",
+      "Semua modul materi belajar",
+      "Info PTN lengkap & deadline tracker",
+      "Masa aktif 6 bulan",
     ],
   },
   {
     id: "pro",
-    name: "Pro",
-    price: planPrice(process.env.NEXT_PUBLIC_PLAN_PRO_PRICE, 49000),
-    priceLabel: formatIdr(planPrice(process.env.NEXT_PUBLIC_PLAN_PRO_PRICE, 49000)),
-    cadence: "/bulan",
+    name: "Belajar Full",
+    displayName: "Belajar Full",
+    earlyBirdPrice: 75000,
+    originalPrice: 450000,
+    earlyBirdQuota: 100,
+    priceStepSize: 10,
+    cadenceLabel: "Selamanya",
     features: [
       "Semua fitur Belajar",
-      "Rasionalisasi nilai dan target PTN",
-      "Analitik kelemahan mendalam",
-      "Prioritas support dan fitur AI tutor",
+      "Masa aktif selamanya",
+      "Prioritas support",
+      "Akses semua fitur baru mendatang",
     ],
   },
 ];

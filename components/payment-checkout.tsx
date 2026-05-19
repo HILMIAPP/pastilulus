@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { BadgePercent, CheckCircle2, CreditCard, ExternalLink, Handshake, ShieldCheck } from "lucide-react";
 import { useState } from "react";
-import { getBillingPlan } from "@/lib/billing";
+import { getBillingPlan, formatIdr } from "@/lib/billing";
 import { site } from "@/lib/site-config";
 import { useRouter } from "next/navigation";
 
@@ -95,9 +95,9 @@ export function PaymentCheckout() {
         <div className="mt-5 rounded-2xl bg-slate-50 p-4">
           <div className="flex items-center justify-between">
             <span className="font-bold text-slate-700">Paket {plan.name}</span>
-            <span className="font-black text-slate-950">{plan.priceLabel}</span>
+            <span className="font-black text-slate-950">{formatIdr(plan.earlyBirdPrice)}</span>
           </div>
-          <p className="mt-1 text-xs font-semibold text-slate-500">Tagihan {plan.cadence}</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Aktif {plan.cadenceLabel}</p>
         </div>
 
         <div className="mt-5 grid gap-3">
