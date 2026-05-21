@@ -1438,6 +1438,12 @@ function ContentWebsiteView({
     ),
   );
   const [paymentGuideYoutubeUrl, setPaymentGuideYoutubeUrl] = useState(contentString("youtubeUrl", ""));
+  const [paymentGuideImageUrls, setPaymentGuideImageUrls] = useState(
+    contentString(
+      "imageUrls",
+      "/tutorial/payment-gif-frames/frame-01.png\n/tutorial/payment-gif-frames/frame-02.png\n/tutorial/payment-gif-frames/frame-03.png\n/tutorial/payment-gif-frames/frame-04.png\n/tutorial/payment-gif-frames/frame-05.png",
+    ),
+  );
   const [paymentGuideQris, setPaymentGuideQris] = useState(
     contentString("qrisSteps", "Pilih QRIS di halaman pembayaran.\nBuka aplikasi mobile banking atau e-wallet.\nScan kode QR yang tampil.\nPastikan nominal dan nama merchant sudah benar.\nKonfirmasi pembayaran dan tunggu status berhasil."),
   );
@@ -1467,6 +1473,7 @@ function ContentWebsiteView({
       title: paymentGuideTitle,
       body: paymentGuideBody,
       youtubeUrl: paymentGuideYoutubeUrl,
+      imageUrls: paymentGuideImageUrls,
       qrisSteps: paymentGuideQris,
       virtualAccountSteps: paymentGuideVa,
       ewalletSteps: paymentGuideEwallet,
@@ -1543,12 +1550,20 @@ function ContentWebsiteView({
                   placeholder="Tulis tata cara pembayaran..."
                 />
               </Field>
-              <Field label="URL YouTube">
+              <Field label="URL YouTube lama">
                 <input
                   className="field"
                   value={paymentGuideYoutubeUrl}
                   onChange={(event) => setPaymentGuideYoutubeUrl(event.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  placeholder="Opsional, tidak dipakai jika slider foto aktif"
+                />
+              </Field>
+              <Field label="URL gambar slider">
+                <textarea
+                  className="field min-h-28 resize-none"
+                  value={paymentGuideImageUrls}
+                  onChange={(event) => setPaymentGuideImageUrls(event.target.value)}
+                  placeholder="/tutorial/payment-gif-frames/frame-01.png"
                 />
               </Field>
               <Field label="Langkah QRIS">

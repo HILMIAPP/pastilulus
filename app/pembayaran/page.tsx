@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { PaymentCheckout } from "@/components/payment-checkout";
+import { PaymentGuideSlider } from "@/components/payment-guide-slider";
 import { StudentShell } from "@/components/student-shell";
-import { getPaymentGuideContent, getYoutubeEmbedUrl } from "@/lib/public-content";
+import { getPaymentGuideContent } from "@/lib/public-content";
 import { getCurrentSession } from "@/lib/session";
 
 export const metadata = {
@@ -13,6 +14,7 @@ const fallbackPaymentGuide = {
   title: "Tata cara pembayaran",
   body: "Pilih paket yang sesuai, cek ringkasan pesanan, lalu klik Lanjutkan pembayaran. Kamu akan diarahkan ke halaman pembayaran resmi Mayar. Setelah pembayaran berhasil, paket aktif otomatis setelah sistem menerima konfirmasi.",
   youtubeUrl: "",
+  imageUrls: "/tutorial/payment-gif-frames/frame-01.png\n/tutorial/payment-gif-frames/frame-02.png\n/tutorial/payment-gif-frames/frame-03.png\n/tutorial/payment-gif-frames/frame-04.png\n/tutorial/payment-gif-frames/frame-05.png",
   qrisSteps: "Pilih QRIS di halaman pembayaran.\nBuka aplikasi mobile banking atau e-wallet.\nScan kode QR yang tampil.\nPastikan nominal dan nama merchant sudah benar.\nKonfirmasi pembayaran dan tunggu status berhasil.",
   virtualAccountSteps: "Pilih Virtual Account dan pilih bank yang tersedia.\nSalin nomor virtual account.\nBuka mobile banking, internet banking, atau ATM.\nPilih menu Transfer atau Pembayaran Virtual Account.\nMasukkan nomor virtual account, cek nominal, lalu bayar.",
   ewalletSteps: "Pilih e-wallet yang tersedia.\nMasukkan nomor HP jika diminta.\nBuka aplikasi e-wallet dan cek notifikasi pembayaran.\nKonfirmasi pembayaran di aplikasi.\nKembali ke halaman status untuk melihat aktivasi paket.",
@@ -26,12 +28,19 @@ function splitSteps(value: string) {
     .filter(Boolean);
 }
 
+function splitImageUrls(value: string) {
+  return value
+    .split("\n")
+    .map((url) => url.trim())
+    .filter(Boolean);
+}
+
 export default async function PembayaranPage() {
   const session = await getCurrentSession();
   if (!session) redirect("/masuk");
 
   const paymentGuide = await getPaymentGuideContent(fallbackPaymentGuide);
-  const youtubeEmbedUrl = getYoutubeEmbedUrl(paymentGuide.youtubeUrl);
+  const sliderImages = splitImageUrls(paymentGuide.imageUrls);
   const methodGuides = [
     { title: "QRIS", steps: splitSteps(paymentGuide.qrisSteps) },
     { title: "Virtual Account", steps: splitSteps(paymentGuide.virtualAccountSteps) },
@@ -55,21 +64,7 @@ export default async function PembayaranPage() {
               ))}
             </div>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-            {youtubeEmbedUrl ? (
-              <iframe
-                src={youtubeEmbedUrl}
-                title={paymentGuide.title}
-                className="aspect-video w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            ) : (
-              <div className="flex aspect-video items-center justify-center p-6 text-center text-sm font-bold text-slate-500">
-                Video panduan akan tampil setelah URL YouTube diisi dari admin.
-              </div>
-            )}
-          </div>
+          <PaymentGuideSlider images={sliderImages} />
           <div className="lg:col-span-2">
             <div className="mt-2 grid gap-4 md:grid-cols-2">
               {methodGuides.map((method) => (

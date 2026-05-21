@@ -27,6 +27,7 @@ export type PaymentGuideContent = {
   title: string;
   body: string;
   youtubeUrl: string;
+  imageUrls: string;
   qrisSteps: string;
   virtualAccountSteps: string;
   ewalletSteps: string;
@@ -110,6 +111,7 @@ export async function getPaymentGuideContent(fallback: PaymentGuideContent) {
     title: asString(data.content.title, fallback.title),
     body: asString(data.content.body, fallback.body),
     youtubeUrl: asString(data.content.youtubeUrl, fallback.youtubeUrl),
+    imageUrls: asString(data.content.imageUrls, fallback.imageUrls),
     qrisSteps: asString(data.content.qrisSteps, fallback.qrisSteps),
     virtualAccountSteps: asString(data.content.virtualAccountSteps, fallback.virtualAccountSteps),
     ewalletSteps: asString(data.content.ewalletSteps, fallback.ewalletSteps),

@@ -98,6 +98,22 @@ export async function POST(request: Request) {
   const requestedPromoCode = normalizeTrackingCode(body.promoCode);
   const requestedAffiliateCode = normalizeTrackingCode(body.affiliateCode);
   const supabaseAdmin = createAdminClient();
+  if (supabaseAdmin) {
+    const { error: schemaError } = await supabaseAdmin
+      .from("payment_transactions")
+      .select("provider_payment_id")
+      .limit(1);
+
+    if (schemaError?.code === "42703") {
+      return Response.json(
+        {
+          mode: "schema-error",
+          message: "Migrasi database Mayar belum dijalankan. Jalankan docs/MAYAR_PAYMENT_MIGRATION.sql sebelum membuat transaksi baru.",
+        },
+        { status: 500 },
+      );
+    }
+  }
   const [{ data: promo }, { data: affiliate }] = supabaseAdmin
     ? await Promise.all([
         requestedPromoCode

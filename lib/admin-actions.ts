@@ -131,6 +131,7 @@ export async function savePaymentGuideAction(input: {
   title: string;
   body: string;
   youtubeUrl: string;
+  imageUrls: string;
   qrisSteps: string;
   virtualAccountSteps: string;
   ewalletSteps: string;
@@ -150,6 +151,7 @@ export async function savePaymentGuideAction(input: {
         title: input.title.trim(),
         body: input.body.trim(),
         youtubeUrl: input.youtubeUrl.trim(),
+        imageUrls: input.imageUrls.trim(),
         qrisSteps: input.qrisSteps.trim(),
         virtualAccountSteps: input.virtualAccountSteps.trim(),
         ewalletSteps: input.ewalletSteps.trim(),

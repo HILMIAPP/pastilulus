@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2, Clock3, Mail, MessageCircle, XCircle } from "lucide-react";
 import { StudentShell } from "@/components/student-shell";
+import { syncMayarPaymentByOrderId } from "@/lib/mayar-payment-sync";
 import { normalizePaymentStatus, paymentStatusCopy } from "@/lib/payment-status";
 import { getCurrentSession } from "@/lib/session";
 import { site } from "@/lib/site-config";
@@ -20,6 +21,7 @@ export default async function PaymentStatusPage({ searchParams }: Props) {
   if (!session) redirect("/masuk");
 
   const params = await searchParams;
+  const syncedStatus = params.order_id ? await syncMayarPaymentByOrderId(params.order_id, session) : null;
   const supabaseAdmin = createAdminClient();
   const { data: transactionStatus } =
     supabaseAdmin && params.order_id
@@ -29,7 +31,8 @@ export default async function PaymentStatusPage({ searchParams }: Props) {
           .eq("order_id", params.order_id)
           .maybeSingle<{ status: "pending" | "paid" | "expired" | "failed" }>()
       : { data: null };
-  const status = normalizePaymentStatus(transactionStatus?.status === "paid" ? "success" : (transactionStatus?.status ?? params.status ?? null));
+  const resolvedTransactionStatus = syncedStatus ?? transactionStatus?.status;
+  const status = normalizePaymentStatus(resolvedTransactionStatus === "paid" ? "success" : (resolvedTransactionStatus ?? params.status ?? null));
   const copy = paymentStatusCopy[status];
   const Icon = status === "success" ? CheckCircle2 : status === "failed" ? XCircle : Clock3;
   const tone =
