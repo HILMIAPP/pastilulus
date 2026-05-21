@@ -24,7 +24,9 @@ function ResetPasswordForm() {
   useEffect(() => {
     const code = searchParams.get("code");
     if (!code) {
-      setInitError("Link reset tidak valid atau sudah kedaluwarsa. Minta link baru dari halaman lupa kata sandi.");
+      setTimeout(() => {
+        setInitError("Link reset tidak valid atau sudah kedaluwarsa. Minta link baru dari halaman lupa kata sandi.");
+      }, 0);
       return;
     }
 

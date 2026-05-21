@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CheckCircle2, Clock3, Mail, MessageCircle, XCircle } from "lucide-react";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { StudentShell } from "@/components/student-shell";
 import { normalizePaymentStatus, paymentStatusCopy } from "@/lib/payment-status";
+import { getCurrentSession } from "@/lib/session";
 import { site } from "@/lib/site-config";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type Props = {
   searchParams: Promise<{ status?: string; order_id?: string }>;
@@ -14,8 +16,20 @@ export const metadata = {
 };
 
 export default async function PaymentStatusPage({ searchParams }: Props) {
+  const session = await getCurrentSession();
+  if (!session) redirect("/masuk");
+
   const params = await searchParams;
-  const status = normalizePaymentStatus(params.status ?? null);
+  const supabaseAdmin = createAdminClient();
+  const { data: transactionStatus } =
+    supabaseAdmin && params.order_id
+      ? await supabaseAdmin
+          .from("payment_transactions")
+          .select("status")
+          .eq("order_id", params.order_id)
+          .maybeSingle<{ status: "pending" | "paid" | "expired" | "failed" }>()
+      : { data: null };
+  const status = normalizePaymentStatus(transactionStatus?.status === "paid" ? "success" : (transactionStatus?.status ?? params.status ?? null));
   const copy = paymentStatusCopy[status];
   const Icon = status === "success" ? CheckCircle2 : status === "failed" ? XCircle : Clock3;
   const tone =
@@ -26,9 +40,8 @@ export default async function PaymentStatusPage({ searchParams }: Props) {
         : "bg-amber-50 text-amber-800 border-amber-200";
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <SiteHeader />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 items-center px-4 py-14 sm:px-6">
+    <StudentShell session={session}>
+      <main className="mx-auto flex w-full max-w-3xl items-center px-4 py-14 sm:px-6">
         <section className="w-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border ${tone}`}>
             <Icon size={30} />
@@ -77,7 +90,6 @@ export default async function PaymentStatusPage({ searchParams }: Props) {
           </div>
         </section>
       </main>
-      <SiteFooter />
-    </div>
+    </StudentShell>
   );
 }

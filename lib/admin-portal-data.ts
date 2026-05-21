@@ -80,10 +80,12 @@ export type AdminPortalData = {
   }>;
   landingSections: Array<{
     id: string;
+    key: string;
     name: string;
     status: string;
     updatedAt: string;
     owner: string;
+    content: Record<string, unknown>;
   }>;
   ptns: AdminPtn[];
   broadcasts: AdminBroadcast[];
@@ -142,7 +144,7 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
     supabase.from("promo_codes").select("id,code,discount_type,discount_value,usage_limit,used_count,expires_at,status").order("created_at", { ascending: false }).limit(100),
     supabase.from("affiliate_partners").select("id,code,name,commission_rate,click_count,conversion_count,revenue_amount,status").order("created_at", { ascending: false }).limit(100),
     supabase.from("blog_posts").select("id,title,category,status,updated_at").order("updated_at", { ascending: false }).limit(100),
-    supabase.from("site_content").select("id,section_key,title,status,owner,updated_at").order("updated_at", { ascending: false }).limit(100),
+    supabase.from("site_content").select("id,section_key,title,status,owner,content,updated_at").order("updated_at", { ascending: false }).limit(100),
     supabase.from("exam_sessions").select("user_id,score").eq("status", "submitted").limit(1000),
     supabase
       .from("crm_conversations")
@@ -241,10 +243,12 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
     })),
     landingSections: (siteContent.data ?? []).map((section) => ({
       id: section.id,
+      key: section.section_key,
       name: section.title ?? section.section_key,
       status: section.status ?? "draft",
       updatedAt: formatDate(section.updated_at),
       owner: section.owner ?? "Content",
+      content: section.content ?? {},
     })),
     ptns: (ptns.data ?? []).map((ptn) => ({
       id: ptn.id,

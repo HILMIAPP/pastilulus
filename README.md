@@ -36,13 +36,14 @@ Buka [http://localhost:3000](http://localhost:3000).
 
 ## Alur Pembayaran
 
-Alur checkout saat ini sudah disiapkan untuk integrasi Midtrans:
+Alur checkout saat ini memakai Mayar Headless Commerce:
 
 1. User memilih paket di `/harga`.
 2. User masuk `/pembayaran?paket=...`.
 3. User wajib menyetujui Syarat Layanan, Kebijakan Privasi, dan Kebijakan Pembayaran.
-4. Frontend memanggil `POST /api/payments/snap-token`.
-5. Jika env Midtrans belum diisi, route mengembalikan status simulasi pengembangan ke `/pembayaran/status`.
+4. Frontend memanggil `POST /api/payments/mayar-checkout`.
+5. Backend membuat invoice Mayar dan mengembalikan `redirectUrl`.
+6. Jika env Mayar belum diisi, route mengembalikan status simulasi pengembangan ke `/pembayaran/status`.
 
 ## White Label & Harga
 
@@ -53,12 +54,12 @@ Konfigurasi utama ada di `.env.example` dan dipakai oleh `lib/site-config.ts` se
 - `NEXT_PUBLIC_STORAGE_PREFIX`, `NEXT_PUBLIC_SESSION_COOKIE_NAME`
 - `NEXT_PUBLIC_PLAN_BELAJAR_PRICE`, `NEXT_PUBLIC_PLAN_PRO_PRICE`
 
-Untuk mengaktifkan Midtrans:
+Untuk mengaktifkan Mayar:
 
-1. Isi `MIDTRANS_SERVER_KEY` dan `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`.
-2. Implementasikan pembuatan Snap token asli di `app/api/payments/snap-token/route.ts`.
-3. Aktifkan webhook di `app/api/payments/midtrans-webhook/route.ts`.
-4. Verifikasi `signature_key`, simpan order, dan aktifkan paket dari backend.
+1. Isi `MAYAR_API_KEY`, `MAYAR_BASE_URL`, dan `MAYAR_WEBHOOK_SECRET`.
+2. Jalankan migrasi `docs/MAYAR_PAYMENT_MIGRATION.sql` bila database sudah ada.
+3. Aktifkan webhook Mayar ke `POST /api/payments/mayar-webhook?secret=...`.
+4. Simpan order, cocokkan amount/customer, verifikasi status invoice Mayar, dan aktifkan paket dari backend.
 5. Jangan pernah mengaktifkan paket dari status frontend saja.
 
 ## Legal
@@ -75,7 +76,7 @@ Next.js 16, React 19, Tailwind CSS 4, TypeScript, lucide-react.
 
 ## Integrasi Berikutnya
 
-Supabase Auth + Postgres + RLS, Midtrans Snap, AI tutor server-side, WhatsApp reminder worker, pipeline konten SOAL UM, dan observability.
+Supabase Auth + Postgres + RLS, Mayar Headless Commerce, AI tutor server-side, WhatsApp reminder worker, pipeline konten SOAL UM, dan observability.
 
 ## Admin production mode
 
@@ -98,7 +99,7 @@ Setelah itu `/admin` akan membaca data dari tabel produksi:
 - `profiles`
 - `questions`
 
-Checkout akan mencatat order ke `payment_transactions`, webhook Midtrans akan mengubah status transaksi, membuat/memperbarui subscription, dan menaikkan `profiles.tier` saat pembayaran berhasil.
+Checkout akan mencatat order ke `payment_transactions`, webhook Mayar akan mengubah status transaksi, membuat/memperbarui subscription, dan menaikkan `profiles.tier` saat pembayaran berhasil.
 
 ## Production ERD
 

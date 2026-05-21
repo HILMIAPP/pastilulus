@@ -12,7 +12,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
-import { learningModules, umptkinModules, learningResources } from "@/lib/learning-materials";
+import { learningModules, umptkinModules } from "@/lib/learning-materials";
 import type { LearningModule } from "@/lib/learning-materials";
 import { getCurrentSession, canAccessTier } from "@/lib/session";
 
@@ -116,9 +116,12 @@ export default async function SiswaBelajarPage() {
               lanjutkan ke mapel prioritas, lalu ukur dengan tryout CBT.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <ResourceLink href={learningResources.masterPdf} label="Buka Master PDF" />
-              <ResourceLink href={learningResources.logbookPdf} label="Buka Logbook PDF" />
-              <ResourceLink href={learningResources.masterDocx} label="Unduh DOCX" download />
+              <Link
+                href="/siswa/belajar/roadmap-30-hari"
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50"
+              >
+                <FileText size={16} /> Buka Roadmap Belajar
+              </Link>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-0 border-t border-slate-200 bg-slate-50 lg:border-l lg:border-t-0">
@@ -212,21 +215,6 @@ export default async function SiswaBelajarPage() {
       </section>
 
     </main>
-  );
-}
-
-function ResourceLink({ href, label, download }: { href: string; label: string; download?: boolean }) {
-  return (
-    <a
-      href={href}
-      download={download}
-      target={download ? undefined : "_blank"}
-      rel={download ? undefined : "noreferrer"}
-      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50"
-    >
-      {download ? <Download size={16} /> : <FileText size={16} />}
-      {label}
-    </a>
   );
 }
 

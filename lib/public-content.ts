@@ -23,6 +23,16 @@ export type HomeContent = {
   cta: string;
 };
 
+export type PaymentGuideContent = {
+  title: string;
+  body: string;
+  youtubeUrl: string;
+  qrisSteps: string;
+  virtualAccountSteps: string;
+  ewalletSteps: string;
+  cardSteps: string;
+};
+
 export type PublicBlogPost = {
   id: string;
   slug: string;
@@ -35,6 +45,22 @@ export type PublicBlogPost = {
 
 function asString(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function getYoutubeId(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.hostname.includes("youtu.be")) return url.pathname.replace("/", "").slice(0, 32);
+    if (url.pathname.startsWith("/embed/")) return url.pathname.split("/")[2]?.slice(0, 32) ?? "";
+    return url.searchParams.get("v")?.slice(0, 32) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function getYoutubeEmbedUrl(value: string) {
+  const id = getYoutubeId(value);
+  return id ? `https://www.youtube.com/embed/${id}` : "";
 }
 
 function formatPostDate(value: string | null) {
@@ -64,6 +90,30 @@ export async function getHomeContent(fallback: HomeContent) {
     headline: asString(data.content.headline, fallback.headline),
     subheadline: asString(data.content.subheadline, fallback.subheadline),
     cta: asString(data.content.cta, fallback.cta),
+  };
+}
+
+export async function getPaymentGuideContent(fallback: PaymentGuideContent) {
+  const supabase = createAdminClient();
+  if (!supabase) return fallback;
+
+  const { data } = await supabase
+    .from("site_content")
+    .select("section_key,content")
+    .eq("section_key", "payment_guide")
+    .eq("status", "published")
+    .maybeSingle<SiteContentRow>();
+
+  if (!data?.content) return fallback;
+
+  return {
+    title: asString(data.content.title, fallback.title),
+    body: asString(data.content.body, fallback.body),
+    youtubeUrl: asString(data.content.youtubeUrl, fallback.youtubeUrl),
+    qrisSteps: asString(data.content.qrisSteps, fallback.qrisSteps),
+    virtualAccountSteps: asString(data.content.virtualAccountSteps, fallback.virtualAccountSteps),
+    ewalletSteps: asString(data.content.ewalletSteps, fallback.ewalletSteps),
+    cardSteps: asString(data.content.cardSteps, fallback.cardSteps),
   };
 }
 

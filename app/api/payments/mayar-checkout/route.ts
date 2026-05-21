@@ -1,32 +1,14 @@
 import { getBillingPlan, calcCurrentPrice } from "@/lib/billing";
-import { getPlanBuyerCounts } from "@/lib/supabase/plan-stats";
 import { getCurrentSession } from "@/lib/session";
 import { site } from "@/lib/site-config";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getPlanBuyerCounts } from "@/lib/supabase/plan-stats";
 
-type SnapTokenRequest = {
+type MayarCheckoutRequest = {
   planId?: string;
   promoCode?: string;
   affiliateCode?: string;
 };
-
-type MidtransSnapResponse = {
-  token?: string;
-  redirect_url?: string;
-  error_messages?: string[];
-};
-
-function getSnapEndpoint() {
-  return process.env.MIDTRANS_IS_PRODUCTION === "true"
-    ? "https://app.midtrans.com/snap/v1/transactions"
-    : "https://app.sandbox.midtrans.com/snap/v1/transactions";
-}
-
-function normalizeTrackingCode(value: unknown) {
-  if (typeof value !== "string") return undefined;
-  const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 32);
-  return normalized || undefined;
-}
 
 type PromoCodeRow = {
   code: string;
@@ -38,6 +20,35 @@ type PromoCodeRow = {
   expires_at: string | null;
   status: string;
 };
+
+type MayarCreateInvoiceResponse = {
+  data?: {
+    id?: string;
+    transactionId?: string;
+    link?: string;
+    paymentUrl?: string;
+    paymentURL?: string;
+    expiredAt?: string;
+  };
+  id?: string;
+  transactionId?: string;
+  link?: string;
+  paymentUrl?: string;
+  paymentURL?: string;
+  message?: string;
+  error?: string;
+  errors?: unknown;
+};
+
+function getMayarBaseUrl() {
+  return (process.env.MAYAR_BASE_URL ?? "https://api.mayar.id/hl/v1").replace(/\/+$/, "");
+}
+
+function normalizeTrackingCode(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 32);
+  return normalized || undefined;
+}
 
 function isPromoCurrentlyValid(promo: PromoCodeRow) {
   const now = Date.now();
@@ -54,20 +65,35 @@ function calculateDiscount(amount: number, promo?: PromoCodeRow | null) {
   return Math.min(amount, Math.max(0, discount));
 }
 
+function getMayarData(response: MayarCreateInvoiceResponse) {
+  const data = response.data ?? response;
+  return {
+    id: data.id,
+    transactionId: data.transactionId,
+    link: data.link ?? data.paymentUrl ?? data.paymentURL,
+    expiredAt: "expiredAt" in data ? data.expiredAt : undefined,
+  };
+}
+
+function getMayarErrorMessage(response: MayarCreateInvoiceResponse) {
+  if (response.message) return response.message;
+  if (response.error) return response.error;
+  if (response.errors) return JSON.stringify(response.errors);
+  return "Sistem pembayaran gagal membuat transaksi Mayar.";
+}
+
 export async function POST(request: Request) {
   const session = await getCurrentSession();
 
-  // Require an authenticated session before issuing a Midtrans order.
-  // This prevents anonymous spam from flooding payment_transactions.
   if (!session || session.userId.startsWith("dev-")) {
     return Response.json({ message: "Login diperlukan untuk melakukan pembayaran." }, { status: 401 });
   }
+  const currentSession = session;
 
-  const body = (await request.json()) as SnapTokenRequest;
+  const body = (await request.json()) as MayarCheckoutRequest;
   const plan = getBillingPlan(body.planId ?? null);
   const buyerCounts = await getPlanBuyerCounts();
   const planCurrentPrice = calcCurrentPrice(plan, buyerCounts[plan.id]);
-  // UUID suffix prevents duplicate order_id on concurrent requests with the same millisecond timestamp.
   const orderId = `PL-${plan.id}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
   const requestedPromoCode = normalizeTrackingCode(body.promoCode);
   const requestedAffiliateCode = normalizeTrackingCode(body.affiliateCode);
@@ -95,27 +121,36 @@ export async function POST(request: Request) {
   const finalAmount = Math.max(0, planCurrentPrice - discountAmount);
   const promoCode = discountAmount > 0 ? promo?.code : undefined;
   const affiliateCode = affiliate?.code;
-  const trackingMetadata = JSON.stringify({ promoCode, affiliateCode, discountAmount });
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? site.url;
+  const statusUrl = `${appUrl}/pembayaran/status?status=pending&order_id=${encodeURIComponent(orderId)}`;
 
-  async function recordTransaction(status: "pending" | "failed") {
+  async function recordTransaction(
+    status: "pending" | "failed",
+    provider?: { paymentId?: string; transactionId?: string; paymentUrl?: string; responsePayload?: MayarCreateInvoiceResponse },
+  ) {
     if (!supabaseAdmin) return;
     await supabaseAdmin.from("payment_transactions").upsert(
       {
         order_id: orderId,
-        user_id: session?.userId?.startsWith("dev-") ? null : session?.userId,
-        customer_name: session?.name,
-        customer_email: session?.email,
+        user_id: currentSession.userId,
+        customer_name: currentSession.name,
+        customer_email: currentSession.email,
         plan: plan.id,
         amount: finalAmount,
+        payment_provider: "mayar",
+        provider_payment_id: provider?.paymentId,
+        provider_transaction_id: provider?.transactionId,
+        provider_payment_url: provider?.paymentUrl,
         status,
         promo_code: promoCode,
         affiliate_code: affiliateCode,
         raw_payload: {
-          source: "snap-token",
+          source: "mayar-checkout",
           originalAmount: planCurrentPrice,
           discountAmount,
           requestedPromoCode,
           requestedAffiliateCode,
+          providerResponse: provider?.responsePayload,
         },
         updated_at: new Date().toISOString(),
       },
@@ -123,7 +158,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!process.env.MIDTRANS_SERVER_KEY || !process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY) {
+  if (!process.env.MAYAR_API_KEY) {
     await recordTransaction("pending");
     return Response.json({
       mode: "development",
@@ -133,78 +168,84 @@ export async function POST(request: Request) {
       promoCode,
       affiliateCode,
       discountAmount,
-      redirectUrl: `/pembayaran/status?status=pending&order_id=${orderId}`,
+      redirectUrl: statusUrl,
       message: "Pembayaran simulasi pengembangan dibuat.",
     });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? site.url;
-  const response = await fetch(getSnapEndpoint(), {
+  const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const description = `Paket ${plan.name} ${site.name}${discountAmount > 0 ? " Promo" : ""}`;
+  const response = await fetch(`${getMayarBaseUrl()}/invoice/create`, {
     method: "POST",
     headers: {
       Accept: "application/json",
-      Authorization: `Basic ${Buffer.from(`${process.env.MIDTRANS_SERVER_KEY}:`).toString("base64")}`,
+      Authorization: `Bearer ${process.env.MAYAR_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      transaction_details: {
-        order_id: orderId,
-        gross_amount: finalAmount,
-      },
-      item_details: [
+      name: currentSession.name,
+      email: currentSession.email,
+      mobile: process.env.MAYAR_DEFAULT_MOBILE ?? "080000000000",
+      redirectUrl: statusUrl,
+      description,
+      expiredAt,
+      items: [
         {
-          id: plan.id,
-          price: finalAmount,
           quantity: 1,
-          name: `Paket ${plan.name} ${site.name}${discountAmount > 0 ? " Promo" : ""}`.slice(0, 50),
+          rate: finalAmount,
+          description,
         },
       ],
-      customer_details: session
-        ? {
-            first_name: session.name,
-            email: session.email,
-          }
-        : undefined,
-      callbacks: {
-        finish: `${appUrl}/pembayaran/status?status=pending&order_id=${orderId}`,
+      extraData: {
+        orderId,
+        userId: currentSession.userId,
+        planId: plan.id,
+        promoCode,
+        affiliateCode,
+        discountAmount: String(discountAmount),
       },
-      custom_field1: plan.id,
-      custom_field2: session?.userId,
-      custom_field3: trackingMetadata.slice(0, 255),
     }),
   });
 
-  const midtrans = (await response.json()) as MidtransSnapResponse;
+  const mayar = (await response.json()) as MayarCreateInvoiceResponse;
+  const mayarData = getMayarData(mayar);
 
-  if (!response.ok || !midtrans.redirect_url) {
-    await recordTransaction("failed");
+  if (!response.ok || !mayarData.link) {
+    await recordTransaction("failed", { responsePayload: mayar });
     return Response.json(
       {
-        mode: "midtrans-error",
+        mode: "mayar-error",
         orderId,
         planId: plan.id,
         amount: finalAmount,
         promoCode,
         affiliateCode,
         discountAmount,
-        redirectUrl: `/pembayaran/status?status=failed&order_id=${orderId}`,
-        message: midtrans.error_messages?.join(" ") ?? "Sistem pembayaran gagal membuat transaksi.",
+        redirectUrl: `/pembayaran/status?status=failed&order_id=${encodeURIComponent(orderId)}`,
+        message: getMayarErrorMessage(mayar),
       },
-      { status: 502 },
+      { status: response.status === 429 ? 429 : 502, headers: response.status === 429 ? { "Retry-After": response.headers.get("Retry-After") ?? "60" } : undefined },
     );
   }
 
-  await recordTransaction("pending");
+  await recordTransaction("pending", {
+    paymentId: mayarData.id,
+    transactionId: mayarData.transactionId,
+    paymentUrl: mayarData.link,
+    responsePayload: mayar,
+  });
+
   return Response.json({
-    mode: "midtrans-snap",
+    mode: "mayar-checkout",
     orderId,
     planId: plan.id,
     amount: finalAmount,
     promoCode,
     affiliateCode,
     discountAmount,
-    token: midtrans.token,
-    redirectUrl: midtrans.redirect_url,
+    providerPaymentId: mayarData.id,
+    providerTransactionId: mayarData.transactionId,
+    redirectUrl: mayarData.link,
     message: "Transaksi pembayaran berhasil dibuat.",
   });
 }

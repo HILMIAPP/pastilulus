@@ -148,7 +148,7 @@ export function PaymentCheckout() {
           disabled={!canPay || isCreatingPayment}
           onClick={async () => {
             setIsCreatingPayment(true);
-            const response = await fetch("/api/payments/snap-token", {
+            const response = await fetch("/api/payments/mayar-checkout", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

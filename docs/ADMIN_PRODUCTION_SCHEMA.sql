@@ -27,10 +27,14 @@ create table if not exists public.payment_transactions (
   plan text not null,
   amount integer not null check (amount >= 0),
   payment_method text,
+  payment_provider text not null default 'mayar',
   status public.payment_status not null default 'pending',
   promo_code text,
   affiliate_code text,
   midtrans_transaction_id text,
+  provider_payment_id text,
+  provider_transaction_id text,
+  provider_payment_url text,
   raw_payload jsonb not null default '{}',
   paid_at timestamptz,
   created_at timestamptz not null default now(),
@@ -90,6 +94,7 @@ create table if not exists public.blog_posts (
 
 create index if not exists idx_payment_transactions_status_created on public.payment_transactions(status, created_at desc);
 create index if not exists idx_payment_transactions_user on public.payment_transactions(user_id, created_at desc);
+create index if not exists idx_payment_transactions_provider_payment on public.payment_transactions(payment_provider, provider_payment_id);
 create index if not exists idx_promo_codes_code_status on public.promo_codes(code, status);
 create index if not exists idx_affiliate_partners_code_status on public.affiliate_partners(code, status);
 create index if not exists idx_blog_posts_status_updated on public.blog_posts(status, updated_at desc);
@@ -149,7 +154,8 @@ insert into public.site_content (section_key, title, owner, content, status)
 values
   ('hero', 'Hero landing', 'Marketing', '{"badge":"Khusus pejuang Ujian Mandiri PTN 2026","headline":"Belajar pasti lulus, masa depan pasti cerah.","cta":"Mulai gratis sekarang"}', 'published'),
   ('features', 'Section fitur', 'Product', '{"layout":"three-column"}', 'published'),
-  ('pricing', 'CTA harga', 'Growth', '{"cta":"Lihat paket belajar"}', 'published')
+  ('pricing', 'CTA harga', 'Growth', '{"cta":"Lihat paket belajar"}', 'published'),
+  ('payment_guide', 'Tata cara pembayaran', 'Billing', '{"title":"Tata cara pembayaran","body":"Pilih paket yang sesuai, cek ringkasan pesanan, lalu klik Lanjutkan pembayaran. Kamu akan diarahkan ke halaman pembayaran resmi Mayar. Setelah pembayaran berhasil, paket aktif otomatis setelah sistem menerima konfirmasi.","youtubeUrl":"","qrisSteps":"Pilih QRIS di halaman pembayaran.\nBuka aplikasi mobile banking atau e-wallet.\nScan kode QR yang tampil.\nPastikan nominal dan nama merchant sudah benar.\nKonfirmasi pembayaran dan tunggu status berhasil.","virtualAccountSteps":"Pilih Virtual Account dan pilih bank yang tersedia.\nSalin nomor virtual account.\nBuka mobile banking, internet banking, atau ATM.\nPilih menu Transfer atau Pembayaran Virtual Account.\nMasukkan nomor virtual account, cek nominal, lalu bayar.","ewalletSteps":"Pilih e-wallet yang tersedia.\nMasukkan nomor HP jika diminta.\nBuka aplikasi e-wallet dan cek notifikasi pembayaran.\nKonfirmasi pembayaran di aplikasi.\nKembali ke halaman status untuk melihat aktivasi paket.","cardSteps":"Pilih Kartu Debit atau Kredit jika tersedia.\nMasukkan data kartu pada halaman pembayaran aman.\nIkuti verifikasi OTP atau 3DS dari bank.\nPastikan transaksi berhasil.\nSimpan bukti pembayaran jika diperlukan."}', 'published')
 on conflict (section_key) do nothing;
 
 insert into public.blog_posts (slug, title, category, excerpt, body, status, published_at)

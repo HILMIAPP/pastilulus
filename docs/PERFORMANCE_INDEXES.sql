@@ -1,13 +1,17 @@
 -- Performance indexes — run after all schema migrations.
 -- These cover the hot query paths identified in the API routes.
 
--- midtrans-webhook: always filters by order_id
+-- payment webhooks: always filter by order_id
 create index if not exists idx_payment_transactions_order_id
   on public.payment_transactions(order_id);
 
--- snap-token & midtrans-webhook: user transaction history
+-- checkout & payment webhooks: user transaction history
 create index if not exists idx_payment_transactions_user_id
   on public.payment_transactions(user_id, created_at desc);
+
+-- mayar-webhook: fallback lookup when webhook payload only includes provider id
+create index if not exists idx_payment_transactions_provider_payment
+  on public.payment_transactions(payment_provider, provider_payment_id);
 
 -- tryout/submit: package lookup by slug, only published rows
 create index if not exists idx_tryout_packages_slug_published
@@ -27,12 +31,12 @@ create index if not exists idx_exam_sessions_user_submitted
 create index if not exists idx_exam_answers_session_id
   on public.exam_answers(session_id);
 
--- promo validation in snap-token
+-- promo validation in checkout
 create index if not exists idx_promo_codes_code_status
   on public.promo_codes(code)
   where status = 'published';
 
--- affiliate lookup in snap-token
+-- affiliate lookup in checkout
 create index if not exists idx_affiliate_partners_code_status
   on public.affiliate_partners(code)
   where status = 'published';

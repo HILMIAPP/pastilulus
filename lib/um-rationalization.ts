@@ -27,7 +27,7 @@ export const rationalizationTargets: RationalizationTarget[] = [
 export function calculateRationalization(summary: ExamScoreSummary) {
   const maxRawScore = summary.total * 4;
   const rawScore = summary.benar * 4 - summary.salah;
-  const normalizedScore = Math.max(0, Math.round((rawScore / maxRawScore) * 1000));
+  const normalizedScore = maxRawScore > 0 ? Math.max(0, Math.round((rawScore / maxRawScore) * 1000)) : 0;
   const accuracy = summary.total > 0 ? Math.round((summary.benar / summary.total) * 100) : 0;
   const answeredRate = summary.total > 0 ? Math.round(((summary.benar + summary.salah) / summary.total) * 100) : 0;
 

@@ -341,7 +341,7 @@ export default async function HomePage() {
                       <Star key={i} size={14} fill="currentColor" />
                     ))}
                   </div>
-                  <p className="mt-4 flex-1 text-base leading-8 text-slate-600">"{t.text}"</p>
+                  <p className="mt-4 flex-1 text-base leading-8 text-slate-600">&ldquo;{t.text}&rdquo;</p>
                   <div className="mt-6 flex items-center gap-3 border-t border-slate-100 pt-5">
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${t.color} text-sm font-black text-white`}>
                       {t.avatar}

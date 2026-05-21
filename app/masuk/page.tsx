@@ -106,7 +106,7 @@ function MasukForm() {
                 ))}
               </div>
               <p className="mt-3 text-sm font-semibold leading-7 text-slate-300">
-                "{testimonial.text}"
+                &ldquo;{testimonial.text}&rdquo;
               </p>
               <div className="mt-3 flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0A66FF] text-xs font-black text-white">

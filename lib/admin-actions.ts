@@ -127,6 +127,45 @@ export async function saveLandingHeroAction(input: {
   return { ok: true };
 }
 
+export async function savePaymentGuideAction(input: {
+  title: string;
+  body: string;
+  youtubeUrl: string;
+  qrisSteps: string;
+  virtualAccountSteps: string;
+  ewalletSteps: string;
+  cardSteps: string;
+}) {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const { error } = await supabase.from("site_content").upsert(
+    {
+      section_key: "payment_guide",
+      title: "Tata cara pembayaran",
+      owner: "Billing",
+      status: "published",
+      content: {
+        title: input.title.trim(),
+        body: input.body.trim(),
+        youtubeUrl: input.youtubeUrl.trim(),
+        qrisSteps: input.qrisSteps.trim(),
+        virtualAccountSteps: input.virtualAccountSteps.trim(),
+        ewalletSteps: input.ewalletSteps.trim(),
+        cardSteps: input.cardSteps.trim(),
+      },
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "section_key" },
+  );
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/pembayaran");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function createBlogPostAction(input: {
   title: string;
   category: string;

@@ -12,6 +12,7 @@ import {
   publishBlogPostAction,
   replyCrmConversationAction,
   saveLandingHeroAction,
+  savePaymentGuideAction,
   seedSeoBlogPostsAction,
   sendBroadcastAction,
   syncPaymentTransactionAction,
@@ -36,7 +37,6 @@ import {
   ExternalLink,
   Eye,
   FileText,
-  Filter,
   Globe2,
   GraduationCap,
   Handshake,
@@ -49,6 +49,7 @@ import {
   Menu,
   Newspaper,
   PhoneCall,
+  PlayCircle,
   Plus,
   ReceiptText,
   Search,
@@ -1418,20 +1419,61 @@ function ContentWebsiteView({
 }: {
   landingSections: AdminPortalData["landingSections"];
 }) {
+  const paymentGuideContent = landingSections.find((section) => section.key === "payment_guide")?.content ?? {};
+  const contentString = (key: string, fallback: string) => {
+    const value = paymentGuideContent[key];
+    return typeof value === "string" && value.trim() ? value : fallback;
+  };
   const [badge, setBadge] = useState("Khusus pejuang Ujian Mandiri PTN 2026");
   const [headline, setHeadline] = useState(`${site.promise.split(",")[0]}, masa depan pasti cerah.`);
   const [subheadline, setSubheadline] = useState(
     `${site.name} bantu kamu latihan dengan pola soal mandiri PTN, paham pembahasan lebih cepat, dan tidak ketinggalan deadline kampus impian.`,
   );
   const [cta, setCta] = useState("Mulai gratis sekarang");
+  const [paymentGuideTitle, setPaymentGuideTitle] = useState(contentString("title", "Tata cara pembayaran"));
+  const [paymentGuideBody, setPaymentGuideBody] = useState(
+    contentString(
+      "body",
+      "Pilih paket, cek ringkasan pesanan, lalu lanjutkan ke halaman pembayaran resmi. Gunakan metode yang tersedia di Mayar dan tunggu konfirmasi otomatis setelah pembayaran berhasil.",
+    ),
+  );
+  const [paymentGuideYoutubeUrl, setPaymentGuideYoutubeUrl] = useState(contentString("youtubeUrl", ""));
+  const [paymentGuideQris, setPaymentGuideQris] = useState(
+    contentString("qrisSteps", "Pilih QRIS di halaman pembayaran.\nBuka aplikasi mobile banking atau e-wallet.\nScan kode QR yang tampil.\nPastikan nominal dan nama merchant sudah benar.\nKonfirmasi pembayaran dan tunggu status berhasil."),
+  );
+  const [paymentGuideVa, setPaymentGuideVa] = useState(
+    contentString("virtualAccountSteps", "Pilih Virtual Account dan pilih bank yang tersedia.\nSalin nomor virtual account.\nBuka mobile banking, internet banking, atau ATM.\nPilih menu Transfer atau Pembayaran Virtual Account.\nMasukkan nomor virtual account, cek nominal, lalu bayar."),
+  );
+  const [paymentGuideEwallet, setPaymentGuideEwallet] = useState(
+    contentString("ewalletSteps", "Pilih e-wallet yang tersedia.\nMasukkan nomor HP jika diminta.\nBuka aplikasi e-wallet dan cek notifikasi pembayaran.\nKonfirmasi pembayaran di aplikasi.\nKembali ke halaman status untuk melihat aktivasi paket."),
+  );
+  const [paymentGuideCard, setPaymentGuideCard] = useState(
+    contentString("cardSteps", "Pilih Kartu Debit atau Kredit jika tersedia.\nMasukkan data kartu pada halaman pembayaran aman.\nIkuti verifikasi OTP atau 3DS dari bank.\nPastikan transaksi berhasil.\nSimpan bukti pembayaran jika diperlukan."),
+  );
   const [contentMessage, setContentMessage] = useState("");
   const [isSavingContent, setIsSavingContent] = useState(false);
+  const [isSavingPaymentGuide, setIsSavingPaymentGuide] = useState(false);
 
   const saveLandingHero = async () => {
     setIsSavingContent(true);
     const result = await saveLandingHeroAction({ badge, headline, subheadline, cta });
     setContentMessage(result.ok ? "Landing page tersimpan dan siap tampil publik." : (result.message ?? "Gagal menyimpan landing."));
     setIsSavingContent(false);
+  };
+
+  const savePaymentGuide = async () => {
+    setIsSavingPaymentGuide(true);
+    const result = await savePaymentGuideAction({
+      title: paymentGuideTitle,
+      body: paymentGuideBody,
+      youtubeUrl: paymentGuideYoutubeUrl,
+      qrisSteps: paymentGuideQris,
+      virtualAccountSteps: paymentGuideVa,
+      ewalletSteps: paymentGuideEwallet,
+      cardSteps: paymentGuideCard,
+    });
+    setContentMessage(result.ok ? "Tata cara pembayaran tersimpan." : (result.message ?? "Gagal menyimpan tata cara pembayaran."));
+    setIsSavingPaymentGuide(false);
   };
 
   return (
@@ -1452,38 +1494,87 @@ function ContentWebsiteView({
       />
 
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="flex items-center gap-2 text-lg font-black text-slate-950">
-            <Edit3 size={20} className="text-blue-600" /> Editor landing
-          </h2>
-          <div className="mt-5 space-y-4">
-            <Field label="Badge hero">
-              <input className="field" value={badge} onChange={(event) => setBadge(event.target.value)} />
-            </Field>
-            <Field label="Headline utama">
-              <textarea className="field min-h-24 resize-none" value={headline} onChange={(event) => setHeadline(event.target.value)} />
-            </Field>
-            <Field label="Subheadline">
-              <textarea
-                className="field min-h-28 resize-none"
-                value={subheadline}
-                onChange={(event) => setSubheadline(event.target.value)}
-              />
-            </Field>
-            <Field label="CTA utama">
-              <input className="field" value={cta} onChange={(event) => setCta(event.target.value)} />
-            </Field>
-            <button
-              type="button"
-              disabled={isSavingContent}
-              onClick={saveLandingHero}
-              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:bg-slate-300"
-            >
-              {isSavingContent ? "Menyimpan..." : "Simpan landing publik"}
-            </button>
-            {contentMessage && <p className="text-sm font-bold text-slate-600">{contentMessage}</p>}
-          </div>
-        </section>
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="flex items-center gap-2 text-lg font-black text-slate-950">
+              <Edit3 size={20} className="text-blue-600" /> Editor landing
+            </h2>
+            <div className="mt-5 space-y-4">
+              <Field label="Badge hero">
+                <input className="field" value={badge} onChange={(event) => setBadge(event.target.value)} />
+              </Field>
+              <Field label="Headline utama">
+                <textarea className="field min-h-24 resize-none" value={headline} onChange={(event) => setHeadline(event.target.value)} />
+              </Field>
+              <Field label="Subheadline">
+                <textarea
+                  className="field min-h-28 resize-none"
+                  value={subheadline}
+                  onChange={(event) => setSubheadline(event.target.value)}
+                />
+              </Field>
+              <Field label="CTA utama">
+                <input className="field" value={cta} onChange={(event) => setCta(event.target.value)} />
+              </Field>
+              <button
+                type="button"
+                disabled={isSavingContent}
+                onClick={saveLandingHero}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:bg-slate-300"
+              >
+                {isSavingContent ? "Menyimpan..." : "Simpan landing publik"}
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="flex items-center gap-2 text-lg font-black text-slate-950">
+              <PlayCircle size={20} className="text-blue-600" /> Tata cara pembayaran
+            </h2>
+            <div className="mt-5 space-y-4">
+              <Field label="Judul section">
+                <input className="field" value={paymentGuideTitle} onChange={(event) => setPaymentGuideTitle(event.target.value)} />
+              </Field>
+              <Field label="Teks instruksi">
+                <textarea
+                  className="field min-h-32 resize-none"
+                  value={paymentGuideBody}
+                  onChange={(event) => setPaymentGuideBody(event.target.value)}
+                  placeholder="Tulis tata cara pembayaran..."
+                />
+              </Field>
+              <Field label="URL YouTube">
+                <input
+                  className="field"
+                  value={paymentGuideYoutubeUrl}
+                  onChange={(event) => setPaymentGuideYoutubeUrl(event.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+              </Field>
+              <Field label="Langkah QRIS">
+                <textarea className="field min-h-28 resize-none" value={paymentGuideQris} onChange={(event) => setPaymentGuideQris(event.target.value)} />
+              </Field>
+              <Field label="Langkah Virtual Account">
+                <textarea className="field min-h-28 resize-none" value={paymentGuideVa} onChange={(event) => setPaymentGuideVa(event.target.value)} />
+              </Field>
+              <Field label="Langkah E-wallet">
+                <textarea className="field min-h-28 resize-none" value={paymentGuideEwallet} onChange={(event) => setPaymentGuideEwallet(event.target.value)} />
+              </Field>
+              <Field label="Langkah Kartu Debit/Kredit">
+                <textarea className="field min-h-28 resize-none" value={paymentGuideCard} onChange={(event) => setPaymentGuideCard(event.target.value)} />
+              </Field>
+              <button
+                type="button"
+                disabled={isSavingPaymentGuide}
+                onClick={savePaymentGuide}
+                className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:bg-slate-300"
+              >
+                {isSavingPaymentGuide ? "Menyimpan..." : "Simpan tata cara pembayaran"}
+              </button>
+              {contentMessage && <p className="text-sm font-bold text-slate-600">{contentMessage}</p>}
+            </div>
+          </section>
+        </div>
 
         <div className="space-y-6">
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -1766,7 +1857,7 @@ function PtnView({
       {ptns.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-400">
           <GraduationCap size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-semibold">Belum ada data PTN. Klik "Tambah PTN" untuk mulai.</p>
+          <p className="font-semibold">Belum ada data PTN. Klik &ldquo;Tambah PTN&rdquo; untuk mulai.</p>
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -1984,17 +2075,6 @@ function ActionPanel({ icon: Icon, title, body, onClick }: { icon: typeof Credit
   );
 }
 
-function ActivityDot({ color, title, time }: { color: string; title: string; time: string }) {
-  return (
-    <div className="flex gap-3">
-      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${color}`} />
-      <div>
-        <p className="text-sm font-bold leading-tight text-slate-800">{title}</p>
-        <p className="mt-0.5 text-xs text-slate-500">{time}</p>
-      </div>
-    </div>
-  );
-}
 
 function TableCard({ children }: { children: ReactNode }) {
   return (
