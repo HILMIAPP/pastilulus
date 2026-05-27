@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import type { TryoutPaket } from "@/lib/app-data";
+import type { TryoutPaket, TryoutQuestion } from "@/lib/app-data";
 import { soalPaket1, soalPaketById } from "@/lib/app-data";
 import { computeScore, readAttempts, incrementAttempts, MAX_ATTEMPTS } from "@/lib/tryout-scoring";
 import type { ScoreResult } from "@/lib/tryout-scoring";
@@ -15,7 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Download,
   FileCheck2,
+  FileText,
   Flag,
   ListChecks,
   Send,
@@ -24,6 +26,237 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+
+// ─── PDF generators (client-side print) ──────────────────────────────────────
+
+function printInNewWindow(html: string) {
+  const win = window.open("", "_blank");
+  if (!win) return;
+  // Tulis ke srcdoc via Blob URL — menghindari document.write deprecation
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  win.location.href = url;
+  // Bersihkan Blob URL setelah tab terbuka + jendela cetak muncul
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+function buildLaporanHtml(
+  paket: TryoutPaket,
+  score: ScoreResult,
+  answers: Record<string, string | null>,
+  rationalization: ReturnType<typeof calculateRationalization> | null,
+  markedCount: number,
+): string {
+  const tanggal = new Intl.DateTimeFormat("id-ID", { dateStyle: "full", timeStyle: "short" }).format(new Date());
+  const akurasi = score.total > 0 ? Math.round((score.benar / score.total) * 100) : 0;
+  const isIrt = score.scoringType === "irt";
+
+  const bagianRows = Object.entries(score.bagianStats).map(([bagian, stat]) => {
+    const pct = stat.total > 0 ? Math.round((stat.benar / stat.total) * 100) : 0;
+    const irtCell = isIrt ? `<td>${stat.irtScore ?? "-"}</td>` : "";
+    return `<tr>
+      <td>${bagian}</td>
+      <td>${stat.total}</td>
+      <td class="ok">${stat.benar}</td>
+      <td class="err">${stat.salah}</td>
+      <td>${stat.kosong}</td>
+      <td>${pct}%</td>
+      ${irtCell}
+    </tr>`;
+  }).join("");
+
+  const rationRows = (!isIrt && rationalization)
+    ? rationalization.targets.map((t) => `<tr>
+        <td>${t.kampus}</td>
+        <td>${t.jalur}</td>
+        <td>${t.benchmark}</td>
+        <td class="${t.gap >= 0 ? "ok" : "err"}">${t.gap >= 0 ? "+" : ""}${t.gap}</td>
+        <td>${t.probability}%</td>
+        <td>${t.status}</td>
+      </tr>`).join("")
+    : "";
+
+  const rationSection = (!isIrt && rationalization) ? `
+    <h2>Rasionalisasi Ujian Mandiri</h2>
+    <p><strong>Skor estimasi:</strong> ${rationalization.normalizedScore}/1000 &nbsp;|&nbsp;
+       <strong>Akurasi:</strong> ${rationalization.accuracy} &nbsp;|&nbsp;
+       <strong>Jawab terisi:</strong> ${rationalization.answeredRate}</p>
+    <p style="margin-bottom:8px">${rationalization.summary}</p>
+    <table>
+      <thead><tr><th>Kampus</th><th>Jalur</th><th>Benchmark</th><th>Gap</th><th>Peluang</th><th>Status</th></tr></thead>
+      <tbody>${rationRows}</tbody>
+    </table>
+    <h3 style="margin-top:16px">Rekomendasi selanjutnya</h3>
+    <ul>${rationalization.nextActions.map((a) => `<li>${a}</li>`).join("")}</ul>
+  ` : "";
+
+  const irtHeader = isIrt ? "<th>Skor IRT</th>" : "";
+  const irtNote = isIrt
+    ? `<p><em>Skor dihitung menggunakan model IRT 3-PL. Skala sub-skor: 200–800. Skor total: 0–1000.</em></p>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Laporan Tryout — ${paket.title}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; padding: 32px; max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+  h2 { font-size: 14px; font-weight: 800; margin: 24px 0 8px; border-bottom: 2px solid #111; padding-bottom: 4px; }
+  h3 { font-size: 13px; font-weight: 700; margin-top: 12px; }
+  p { margin-bottom: 6px; line-height: 1.6; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 3px solid #111; padding-bottom: 16px; }
+  .brand { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #555; margin-bottom: 4px; }
+  .score-box { background: #111; color: #fff; padding: 12px 20px; border-radius: 8px; text-align: center; }
+  .score-box .label { font-size: 9px; text-transform: uppercase; letter-spacing:.1em; color:#aaa; }
+  .score-box .value { font-size: 36px; font-weight: 900; line-height: 1; }
+  .score-box .sub { font-size: 10px; color: #aaa; margin-top: 2px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+  .card { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; }
+  .card .lbl { font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase; }
+  .card .val { font-size: 20px; font-weight: 900; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+  th { background: #f3f4f6; font-weight: 800; text-align: left; padding: 6px 8px; border: 1px solid #e5e7eb; }
+  td { padding: 5px 8px; border: 1px solid #e5e7eb; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .ok { color: #059669; font-weight: 700; }
+  .err { color: #dc2626; font-weight: 700; }
+  ul { padding-left: 18px; margin-top: 4px; }
+  li { margin-bottom: 4px; }
+  .footer { margin-top: 32px; font-size: 10px; color: #888; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+  @media print { body { padding: 16px; } @page { margin: 1.5cm; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">${site.name} · Laporan Hasil Tryout</div>
+      <h1>${paket.title}</h1>
+      <p style="color:#555;font-size:11px">${paket.subtitle}</p>
+      <p style="color:#888;font-size:10px;margin-top:4px">${tanggal}</p>
+    </div>
+    <div class="score-box">
+      <div class="label">${isIrt ? "Skor IRT" : "Skor Akhir"}</div>
+      <div class="value">${score.skor}</div>
+      ${isIrt ? '<div class="sub">skala 0–1000</div>' : ""}
+    </div>
+  </div>
+
+  <h2>Ringkasan Hasil</h2>
+  <div class="grid">
+    <div class="card"><div class="lbl">Benar</div><div class="val ok">${score.benar}</div></div>
+    <div class="card"><div class="lbl">Salah</div><div class="val err">${score.salah}</div></div>
+    <div class="card"><div class="lbl">Kosong</div><div class="val">${score.kosong}</div></div>
+    <div class="card"><div class="lbl">Ditandai</div><div class="val">${markedCount}</div></div>
+  </div>
+  <p><strong>Total soal:</strong> ${score.total} &nbsp;|&nbsp; <strong>Akurasi:</strong> ${akurasi}% &nbsp;|&nbsp; <strong>Sistem:</strong> ${paket.scoring}</p>
+  ${irtNote}
+
+  <h2>Analisis Per Bagian</h2>
+  <table>
+    <thead><tr><th>Bagian / Sub-Tes</th><th>Total</th><th>Benar</th><th>Salah</th><th>Kosong</th><th>Akurasi</th>${irtHeader}</tr></thead>
+    <tbody>${bagianRows}</tbody>
+  </table>
+
+  ${rationSection}
+
+  <div class="footer">
+    Laporan ini dibuat otomatis oleh ${site.name} (${site.url}) pada ${tanggal}.<br>
+    Rasionalisasi adalah estimasi internal — bukan jaminan kelulusan resmi dari kampus.
+  </div>
+</body>
+</html>`;
+}
+
+function buildPembahasanHtml(
+  paket: TryoutPaket,
+  soalList: TryoutQuestion[],
+  answers: Record<string, string | null>,
+  marked: Record<string, boolean>,
+): string {
+  const tanggal = new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date());
+
+  const soalHtml = soalList.map((q) => {
+    const ans = answers[q.id];
+    const ok = ans === q.kunci;
+    const isEmpty = ans == null;
+    const statusClass = ok ? "ok" : isEmpty ? "kosong" : "err";
+    const statusLabel = ok ? "✓ Benar" : isEmpty ? "○ Kosong" : "✗ Salah";
+    const markedTag = marked[q.id] ? `<span class="tag ragu">Ragu-ragu</span>` : "";
+
+    const opsiHtml = Object.entries(q.opsi).map(([key, val]) => {
+      const isKunci = key === q.kunci;
+      const isUser = key === ans;
+      let cls = "opsi";
+      if (isKunci) cls += " kunci";
+      else if (isUser && !ok) cls += " salah-user";
+      return `<div class="${cls}">${isKunci ? "✓" : isUser && !ok ? "✗" : "○"} <strong>${key}.</strong> ${val}</div>`;
+    }).join("");
+
+    return `<div class="soal-card">
+      <div class="soal-head">
+        <span class="tag">No. ${q.nomor}</span>
+        <span class="tag blue">${q.bagian}</span>
+        <span class="tag amber">${q.tingkat}</span>
+        <span class="tag ${statusClass}">${statusLabel}</span>
+        ${markedTag}
+      </div>
+      <p class="pertanyaan">${q.pertanyaan}</p>
+      <div class="opsi-list">${opsiHtml}</div>
+      <div class="pembahasan">
+        <strong>Kunci:</strong> ${q.kunci}
+        ${ans && !ok ? `&nbsp;·&nbsp; <strong>Jawabanmu:</strong> ${ans}` : ""}
+        <p class="bahas-text">${q.pembahasan}</p>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Pembahasan — ${paket.title}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; padding: 32px; max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 18px; font-weight: 900; margin-bottom: 2px; }
+  .header { margin-bottom: 24px; border-bottom: 3px solid #111; padding-bottom: 14px; }
+  .brand { font-size: 10px; text-transform: uppercase; letter-spacing:.1em; color:#555; margin-bottom: 4px; }
+  .soal-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; page-break-inside: avoid; }
+  .soal-head { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .tag { background: #f3f4f6; border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 700; color: #374151; }
+  .tag.blue { background: #eff6ff; color: #1d4ed8; }
+  .tag.amber { background: #fffbeb; color: #92400e; }
+  .tag.ok { background: #d1fae5; color: #065f46; }
+  .tag.err { background: #fee2e2; color: #991b1b; }
+  .tag.kosong { background: #f1f5f9; color: #475569; }
+  .tag.ragu { background: #fff7ed; color: #9a3412; }
+  .pertanyaan { font-size: 12px; font-weight: 600; line-height: 1.6; margin-bottom: 10px; color: #1e293b; }
+  .opsi-list { margin-bottom: 10px; }
+  .opsi { padding: 4px 0; font-size: 11px; color: #374151; line-height: 1.5; }
+  .opsi.kunci { color: #065f46; font-weight: 700; background: #d1fae5; padding: 3px 8px; border-radius: 4px; margin: 2px 0; }
+  .opsi.salah-user { color: #991b1b; background: #fee2e2; padding: 3px 8px; border-radius: 4px; margin: 2px 0; }
+  .pembahasan { background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 11px; }
+  .bahas-text { margin-top: 6px; line-height: 1.6; color: #374151; }
+  .footer { margin-top: 28px; font-size: 10px; color: #888; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+  @media print { body { padding: 16px; } @page { margin: 1.2cm; size: A4; } .soal-card { page-break-inside: avoid; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">${site.name} · Pembahasan Tryout</div>
+    <h1>${paket.title}</h1>
+    <p style="color:#555;font-size:11px">${paket.subtitle} &nbsp;·&nbsp; ${soalList.length} soal &nbsp;·&nbsp; ${tanggal}</p>
+  </div>
+  ${soalHtml}
+  <div class="footer">
+    Pembahasan ini dibuat oleh ${site.name} (${site.url}). Gunakan sebagai bahan review mandiri.
+  </div>
+</body>
+</html>`;
+}
 
 type Props = { paket: TryoutPaket };
 type Choice = "A" | "B" | "C" | "D" | "E";
@@ -439,8 +672,40 @@ export function TryoutExam({ paket }: Props) {
             </div>
           )}
 
+          {/* Download buttons */}
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">Unduh dokumen</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  printInNewWindow(
+                    buildLaporanHtml(paket, score, answers, rationalization, markedCount),
+                  )
+                }
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800"
+              >
+                <Download size={15} /> Unduh Laporan
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  printInNewWindow(
+                    buildPembahasanHtml(paket, soalList, answers, marked),
+                  )
+                }
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                <FileText size={15} /> Unduh Pembahasan
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">
+              Klik → dialog print muncul → pilih <strong>Simpan sebagai PDF</strong> di tujuan printer.
+            </p>
+          </div>
+
           {/* Attempt counter + action buttons */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-semibold text-slate-500">
               Percobaan terpakai: <span className="font-black text-slate-900">{attemptCount}/{MAX_ATTEMPTS}</span>
             </p>
