@@ -5,7 +5,21 @@ import { BlogVisual } from "@/components/blog-visual";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getPublicBlogPost, getPublicBlogPosts } from "@/lib/public-content";
+import { seoBlogSeedPosts } from "@/lib/seo-blog-seed";
 import { site } from "@/lib/site-config";
+
+function seedFallback(slug: string) {
+  const found = seoBlogSeedPosts.find((p) => p.slug === slug);
+  if (!found) return null;
+  return { id: slug, slug: found.slug, title: found.title, category: found.category, excerpt: found.excerpt, body: found.body, date: "Mei 2026" };
+}
+
+function seedRelated(slug: string) {
+  return seoBlogSeedPosts
+    .filter((p) => p.slug !== slug)
+    .slice(0, 4)
+    .map((p, i) => ({ id: `seed-${i}`, slug: p.slug, title: p.title, category: p.category, excerpt: p.excerpt, date: "Mei 2026" }));
+}
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -35,11 +49,12 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function BlogDetailPage({ params }: Props) {
   const { slug } = await params;
-  const post = await getPublicBlogPost(slug);
+  const post = (await getPublicBlogPost(slug)) ?? seedFallback(slug);
 
   if (!post) notFound();
 
-  const relatedPosts = (await getPublicBlogPosts([])).filter((item) => item.slug !== slug).slice(0, 4);
+  const dbRelated = (await getPublicBlogPosts([])).filter((item) => item.slug !== slug).slice(0, 4);
+  const relatedPosts = dbRelated.length ? dbRelated : seedRelated(slug);
   const articleUrl = `${site.url}/blog/${post.slug}`;
   const articleSchema = {
     "@context": "https://schema.org",

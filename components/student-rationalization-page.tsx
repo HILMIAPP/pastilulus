@@ -6,9 +6,12 @@ import { ArrowRight, BarChart3, ShieldCheck, Target, TrendingUp } from "lucide-r
 import { calculateRationalization, type ExamScoreSummary } from "@/lib/um-rationalization";
 import { storageKeys } from "@/lib/site-config";
 
+type BagianStat = { benar: number; salah: number; kosong: number; total: number };
+
 type SavedTryoutResult = ExamScoreSummary & {
   paketTitle: string;
   createdAt: string;
+  bagianStats?: Record<string, BagianStat>;
 };
 
 export function StudentRationalizationPage() {
@@ -64,6 +67,38 @@ export function StudentRationalizationPage() {
         <Metric label="Soal terisi" value={`${rationalization.answeredRate}%`} />
         <Metric label="Benar/Salah/Kosong" value={`${savedResult.benar}/${savedResult.salah}/${savedResult.kosong}`} />
       </section>
+
+      {savedResult.bagianStats && Object.keys(savedResult.bagianStats).length > 0 && (
+        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-black uppercase tracking-wide text-slate-400">Analisis Per Bagian</p>
+          <h2 className="mt-1 text-xl font-black text-slate-950">Distribusi nilai per mata uji.</h2>
+          <div className="mt-5 space-y-4">
+            {Object.entries(savedResult.bagianStats).map(([bagian, stat]) => {
+              const akurasi = stat.total > 0 ? Math.round((stat.benar / stat.total) * 100) : 0;
+              const barColor = akurasi >= 70 ? "bg-emerald-500" : akurasi >= 45 ? "bg-amber-400" : "bg-rose-500";
+              return (
+                <div key={bagian}>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="font-black text-slate-800">{bagian}</span>
+                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+                      <span className="text-emerald-600">{stat.benar}✓</span>
+                      <span className="text-rose-500">{stat.salah}✗</span>
+                      <span className="text-slate-400">{stat.kosong}○</span>
+                      <span className="w-10 text-right font-black text-slate-700">{akurasi}%</span>
+                    </div>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${akurasi}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-xs font-semibold text-slate-400">
+            Merah &lt;45% — perlu penguatan. Kuning 45–69% — bisa dioptimalkan. Hijau ≥70% — sudah solid.
+          </p>
+        </section>
+      )}
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
         {rationalization.targets.map((target) => (

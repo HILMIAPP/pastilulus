@@ -19,6 +19,7 @@ export type LearningModule = {
   outcomes: string[];
   pages: string;
   recommendedFor: string[];
+  pdfUrl?: string;
   docxUrl?: string;
   seksi?: MateriSeksi[];
 };
@@ -47,6 +48,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Punya peta belajar 30 hari", "Tahu urutan materi prioritas", "Siap masuk ke tryout terjadwal"],
     pages: "Buku Master: Cara Pakai + Roadmap 30 Hari",
     recommendedFor: ["User baru", "Gap year", "Belajar mepet deadline"],
+    pdfUrl: "/materi/buku/buku-01-roadmap-um-ptn.pdf",
   },
   {
     id: "tps-penalaran",
@@ -63,6 +65,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Membaca premis lebih rapi", "Menghindari kesimpulan palsu", "Mengerjakan soal logika lebih cepat"],
     pages: "Buku Master: TPS Penalaran Umum",
     recommendedFor: ["SIMAK UI", "UM UGM", "SMITS", "UM UNDIP"],
+    pdfUrl: "/materi/buku/buku-02-tps-penalaran.pdf",
   },
   {
     id: "literasi-indonesia",
@@ -79,6 +82,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Lebih cepat membaca teks panjang", "Membedakan ide pokok dan detail", "Menjawab inferensi berbasis bukti"],
     pages: "Master + Logbook: Literasi Bahasa Indonesia",
     recommendedFor: ["Semua jalur mandiri", "Soshum", "Campuran"],
+    pdfUrl: "/materi/buku/buku-03-literasi-indonesia.pdf",
   },
   {
     id: "english-literacy",
@@ -95,6 +99,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Memahami main idea", "Mengerjakan grammar pilihan ganda", "Membaca teks akademik lebih efisien"],
     pages: "Buku Master: English Literacy & Grammar",
     recommendedFor: ["SIMAK UI", "SMUP", "UNAIR", "UPNVJ"],
+    pdfUrl: "/materi/buku/buku-04-literasi-inggris.pdf",
   },
   {
     id: "matematika-dasar",
@@ -111,6 +116,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Menguasai rumus prioritas", "Mendeteksi tipe soal cepat", "Membangun bank rumus pribadi"],
     pages: "Buku Master: Matematika Dasar + Bank Rumus",
     recommendedFor: ["Semua peserta", "Teknik/Komputer", "Ekonomi/Bisnis"],
+    pdfUrl: "/materi/buku/buku-05-matematika-dasar.pdf",
   },
   {
     id: "matematika-ipa",
@@ -127,6 +133,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Siap soal kuantitatif saintek", "Mengenali pola substitusi rumus", "Mengurangi kesalahan hitung"],
     pages: "Buku Master: Matematika IPA",
     recommendedFor: ["ITB", "ITS", "Kedokteran/Kesehatan", "Teknik"],
+    pdfUrl: "/materi/buku/buku-06-matematika-ipa.pdf",
   },
   {
     id: "fisika",
@@ -143,6 +150,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Memilih rumus sesuai konteks", "Membaca grafik/fenomena", "Mengerjakan soal hitungan bertahap"],
     pages: "Buku Master: Fisika",
     recommendedFor: ["Saintek", "Teknik", "Kedokteran"],
+    pdfUrl: "/materi/buku/buku-07-fisika.pdf",
   },
   {
     id: "kimia",
@@ -159,6 +167,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Merapikan konsep mol", "Membaca kurva titrasi", "Menghindari jebakan satuan"],
     pages: "Buku Master: Kimia",
     recommendedFor: ["Kedokteran", "Farmasi", "Saintek"],
+    pdfUrl: "/materi/buku/buku-08-kimia.pdf",
   },
   {
     id: "biologi",
@@ -175,6 +184,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Menghubungkan konsep antar bab", "Membaca diagram biologi", "Siap soal analisis fenomena"],
     pages: "Buku Master: Biologi",
     recommendedFor: ["Kedokteran", "Biologi", "Saintek"],
+    pdfUrl: "/materi/buku/buku-09-biologi.pdf",
   },
   {
     id: "soshum-terpadu",
@@ -191,6 +201,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Menganalisis data sosial", "Membaca kurva ekonomi", "Membuat kesimpulan kritis dari fenomena"],
     pages: "Buku Master: Ekonomi, Geografi, Sosiologi, Sejarah",
     recommendedFor: ["Soshum", "Ekonomi/Bisnis", "Hukum", "Komunikasi"],
+    pdfUrl: "/materi/buku/buku-10-soshum.pdf",
   },
   {
     id: "latihan-terpadu",
@@ -207,6 +218,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Mengukur penguasaan bab", "Mencatat pola salah", "Menentukan materi remedial"],
     pages: "Buku Master: Latihan Soal Terpadu + Kunci",
     recommendedFor: ["Sebelum tryout", "Review mingguan", "Remedial"],
+    pdfUrl: "/materi/buku/buku-11-latihan-logbook.pdf",
   },
   {
     id: "logbook-error-log",
@@ -223,6 +235,7 @@ export const learningModules: LearningModule[] = [
     outcomes: ["Mencatat durasi belajar", "Mengelompokkan jenis kesalahan", "Membuat remedial lebih tepat"],
     pages: "Logbook Rangkuman: Tracker Belajar Harian + Error Log",
     recommendedFor: ["Semua siswa", "Belajar mandiri", "Monitoring orang tua"],
+    pdfUrl: "/materi/buku/buku-11-latihan-logbook.pdf",
   },
 ];
 

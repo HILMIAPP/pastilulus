@@ -26,6 +26,8 @@ const footerGroups = [
   {
     title: "Bantuan",
     links: [
+      { href: "/faq", label: "FAQ" },
+      { href: "/tentang", label: "Tentang kami" },
       { href: "/kontak", label: "Kontak" },
       { href: "/kebijakan-privasi", label: "Kebijakan privasi" },
       { href: "/kebijakan-pembayaran", label: "Kebijakan pembayaran" },

@@ -2,9 +2,13 @@ import { CalendarDays, ExternalLink, GraduationCap, Target } from "lucide-react"
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ptnDeadlines } from "@/components/student-dashboard-data";
+import { daftarUinPtkin, uinCount, iainCount } from "@/lib/umptkin-data";
+import { site } from "@/lib/site-config";
 
 export const metadata = {
-  title: "Info PTN & Deadline",
+  title: "Info PTN & UIN-PTKIN",
+  description: `Jadwal, skema seleksi, dan daftar 39 UIN/IAIN/STAIN peserta UM-PTKIN 2026. Data ringkasan untuk strategi belajar ${site.name}.`,
+  alternates: { canonical: `${site.url}/info-ptn` },
 };
 
 export default function InfoPtnPage() {
@@ -23,8 +27,9 @@ export default function InfoPtnPage() {
           </p>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <SummaryCard label="Kampus target" value={`${ptnDeadlines.length}`} />
+        <div className="mt-8 grid gap-4 sm:grid-cols-4">
+          <SummaryCard label="PTN mandiri" value={`${ptnDeadlines.length}`} />
+          <SummaryCard label="UIN PTKIN" value={`${daftarUinPtkin.length}`} />
           <SummaryCard label="Fokus 2026" value="UM/PTN-BH" />
           <SummaryCard label="Mode utama" value="CBT + Nilai" />
         </div>
@@ -74,6 +79,58 @@ export default function InfoPtnPage() {
             </article>
           ))}
         </div>
+        {/* UIN-PTKIN Section */}
+        <section id="umptkin" className="mt-16 scroll-mt-8">
+          <div className="max-w-3xl">
+            <p className="text-sm font-black uppercase tracking-wide text-emerald-700">UM-PTKIN 2026</p>
+            <h2 className="mt-3 text-2xl font-black text-slate-950 sm:text-3xl">
+              Daftar {daftarUinPtkin.length} UIN/IAIN/STAIN peserta UM-PTKIN.
+            </h2>
+            <p className="mt-3 leading-relaxed text-slate-600">
+              Semua kampus berikut menggunakan sistem UM-PTKIN sebagai jalur seleksi mandiri. Paket tryout UM-PTKIN
+              di platform ini dirancang sesuai pola soal Sub Tes 1–5 yang berlaku di seluruh kampus ini.
+            </p>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-800">
+              {uinCount} UIN
+            </span>
+            <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-black text-blue-800">
+              {iainCount} IAIN
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {daftarUinPtkin.map((uin) => (
+              <a
+                key={uin.id}
+                href={uin.url}
+                target="_blank"
+                rel="noreferrer"
+                className="group flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-black ${
+                      uin.jenis === "UIN" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {uin.jenis}
+                    </span>
+                    <p className="truncate text-sm font-black text-slate-900">{uin.singkatan}</p>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{uin.nama}</p>
+                  <p className="mt-1.5 text-[11px] font-semibold text-slate-400">{uin.kota}, {uin.provinsi}</p>
+                </div>
+                <ExternalLink size={14} className="mt-0.5 shrink-0 text-slate-300 group-hover:text-emerald-600" />
+              </a>
+            ))}
+          </div>
+
+          <p className="mt-6 text-xs font-semibold text-slate-400">
+            * Data berdasarkan daftar resmi peserta UM-PTKIN. Verifikasi selalu ke portal resmi masing-masing kampus.
+          </p>
+        </section>
       </main>
       <SiteFooter />
     </div>

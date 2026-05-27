@@ -61,4 +61,6 @@ export const storageKeys = {
   ptnChecklist: `${whiteLabel.storagePrefix}_ptn_checklist`,
   latestTryoutResult: `${whiteLabel.storagePrefix}_latest_tryout_result`,
   moduleProgress: (userId: string) => `${whiteLabel.storagePrefix}_mods_${userId}`,
+  /** Menyimpan jumlah percobaan per paket: Record<paketId, count> */
+  tryoutAttempts: `${whiteLabel.storagePrefix}_tryout_attempts`,
 };

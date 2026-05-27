@@ -37,6 +37,7 @@ describe("TryoutExam CBT Component", () => {
     pola: "Karakter: logika.",
     akses: "gratis",
     scoring: "Benar +4, Salah -1, Kosong 0",
+    scoringType: "classical",
   };
 
   it("should render instructions page first and disable start button by default", () => {

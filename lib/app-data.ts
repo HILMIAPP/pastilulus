@@ -13,8 +13,19 @@ export type TryoutPaket = {
   durasiMenit: number;
   pola: string;
   akses: "gratis" | "belajar_pro";
+  /** Teks deskripsi sistem penilaian untuk ditampilkan ke siswa. */
   scoring: string;
+  /**
+   * "classical" — benar +4, salah −1, kosong 0  (UM Mandiri PTN)
+   * "irt"       — penilaian IRT 3-PL per sub-tes, skala 0–1000 (UM-PTKIN)
+   */
+  scoringType: "classical" | "irt";
+  /** Path logo institusi di /public (opsional). Ditampilkan di kartu paket. */
+  logoUrl?: string;
 };
+
+const CLASSICAL_SCORING = "Benar +4, kosong 0, salah -1";
+const IRT_SCORING = "Penilaian IRT per sub-tes — skor kemampuan skala 0–1000, tanpa penalti kosong";
 
 const kampusTryoutPaket: TryoutPaket[] = [
   {
@@ -26,7 +37,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter SIMAK UI: penalaran kritis, literasi akademik panjang, dan matematika konseptual.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-ui.svg",
   },
   {
     id: "um-ugm-100",
@@ -37,7 +50,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter UM UGM CBT: hitungan cepat, literasi, dan konsep lintas bidang.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-ugm.svg",
   },
   {
     id: "sm-itb-100",
@@ -48,7 +63,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter SM ITB: logika, kuantitatif, dan problem solving bertahap.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-itb.svg",
   },
   {
     id: "smua-unair-100",
@@ -59,7 +76,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter UNAIR: pemahaman bacaan, sains dasar, dan penalaran kontekstual.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-unair.svg",
   },
   {
     id: "utm-ipb-100",
@@ -70,7 +89,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter IPB: data, biologi, kuantitatif, dan penalaran aplikatif.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-ipb.svg",
   },
   {
     id: "sm-its-100",
@@ -81,7 +102,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter ITS: matematika, fisika terapan, dan problem solving teknik.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-its.svg",
   },
   {
     id: "smup-unpad-100",
@@ -92,7 +115,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter UNPAD: literasi, penalaran umum, dan TKA kontekstual.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-unpad.svg",
   },
   {
     id: "um-undip-100",
@@ -103,7 +128,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter UNDIP: ketelitian bacaan, konsep dasar, dan waktu pengerjaan ketat.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-undip.svg",
   },
   {
     id: "smub-ub-100",
@@ -114,7 +141,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter UB: TPS, literasi, TKA, dan soal campuran berbasis konteks.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-ub.svg",
   },
   {
     id: "mandiri-unhas-100",
@@ -125,7 +154,9 @@ const kampusTryoutPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Karakter UNHAS: penalaran, literasi, dan TKA dasar untuk berbagai rumpun.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-unhas.svg",
   },
 ];
 
@@ -139,7 +170,9 @@ export const tryoutPaket: TryoutPaket[] = [
     durasiMenit: 150,
     pola: "SIMAK UI, SM-ITB, UTUL UGM, SMUP UNPAD, dan kampus lain.",
     akses: "gratis",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-multi-ptn.svg",
   },
   {
     id: "paket-2",
@@ -150,7 +183,9 @@ export const tryoutPaket: TryoutPaket[] = [
     durasiMenit: 150,
     pola: "Multi-kampus sesuai folder SOAL UM.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: CLASSICAL_SCORING,
+    scoringType: "classical",
+    logoUrl: "/assets/univ/logo-multi-ptn.svg",
   },
   ...kampusTryoutPaket,
 ];
@@ -190,7 +225,9 @@ export const tryoutUmptkinPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Komposisi resmi UM-PTKIN: Sub Tes 1–5 dengan bobot HOTS tinggi.",
     akses: "gratis",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: IRT_SCORING,
+    scoringType: "irt",
+    logoUrl: "/assets/univ/logo-kemenag.svg",
   },
   {
     id: "umptkin-2",
@@ -201,7 +238,9 @@ export const tryoutUmptkinPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Penekanan pada Literasi Bahasa Indonesia dan Penalaran Akademik.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: IRT_SCORING,
+    scoringType: "irt",
+    logoUrl: "/assets/univ/logo-kemenag.svg",
   },
   {
     id: "umptkin-3",
@@ -212,7 +251,9 @@ export const tryoutUmptkinPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Fokus Penalaran Matematika dan Pengetahuan Agama Islam tingkat lanjut.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: IRT_SCORING,
+    scoringType: "irt",
+    logoUrl: "/assets/univ/logo-kemenag.svg",
   },
   {
     id: "umptkin-4",
@@ -223,7 +264,9 @@ export const tryoutUmptkinPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Semua subtes dengan variasi soal kontekstual dan analitis.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: IRT_SCORING,
+    scoringType: "irt",
+    logoUrl: "/assets/univ/logo-kemenag.svg",
   },
   {
     id: "umptkin-5",
@@ -234,6 +277,8 @@ export const tryoutUmptkinPaket: TryoutPaket[] = [
     durasiMenit: 120,
     pola: "Paket final: distribusi subtes merata dengan soal HOTS paling menantang.",
     akses: "belajar_pro",
-    scoring: "Benar +4, kosong 0, salah -1",
+    scoring: IRT_SCORING,
+    scoringType: "irt",
+    logoUrl: "/assets/univ/logo-kemenag.svg",
   },
 ];

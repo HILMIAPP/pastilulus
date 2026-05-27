@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { TryoutPaket } from "@/lib/app-data";
 import { soalPaket1, soalPaketById } from "@/lib/app-data";
+import { computeScore, readAttempts, incrementAttempts, MAX_ATTEMPTS } from "@/lib/tryout-scoring";
+import type { ScoreResult } from "@/lib/tryout-scoring";
 import { calculateRationalization } from "@/lib/um-rationalization";
 import { site, storageKeys } from "@/lib/site-config";
 import {
   AlertTriangle,
+  Ban,
   Bookmark,
   ChevronLeft,
   ChevronRight,
@@ -22,18 +25,48 @@ import {
   X,
 } from "lucide-react";
 
-type Props = {
-  paket: TryoutPaket;
-};
-
+type Props = { paket: TryoutPaket };
 type Choice = "A" | "B" | "C" | "D" | "E";
-
 const choiceKeys: Choice[] = ["A", "B", "C", "D", "E"];
 
+// ─── Attempt tracking ─────────────────────────────────────────────────────────
+
+function AttemptsBlocked({ paket }: { paket: TryoutPaket }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+      <div className="w-full max-w-md rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+          <Ban size={26} />
+        </div>
+        <h1 className="mt-5 text-xl font-black text-slate-950">Batas percobaan tercapai</h1>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+          Paket <span className="font-bold">{paket.title}</span> sudah dikerjakan{" "}
+          <span className="font-black text-rose-600">{MAX_ATTEMPTS}×</span>. Setiap paket hanya bisa
+          diakses maksimal {MAX_ATTEMPTS} kali agar tryout tetap bermakna sebagai simulasi nyata.
+        </p>
+        <div className="mt-6 flex flex-col gap-3">
+          <Link
+            href="/siswa/tryout"
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800"
+          >
+            Pilih paket lain
+          </Link>
+          <Link
+            href="/siswa/rasionalisasi"
+            className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+          >
+            Lihat rasionalisasi
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function TryoutExam({ paket }: Props) {
-  const soalList = useMemo(() => {
-    return soalPaketById[paket.id] ?? soalPaket1;
-  }, [paket.id]);
+  const soalList = useMemo(() => soalPaketById[paket.id] ?? soalPaket1, [paket.id]);
 
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Choice | null>>({});
@@ -43,6 +76,14 @@ export function TryoutExam({ paket }: Props) {
   const [hasAgreed, setHasAgreed] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [timeLeft, setTimeLeft] = useState(paket.durasiMenit * 60);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [attemptLoaded, setAttemptLoaded] = useState(false);
+
+  // Baca jumlah percobaan dari localStorage (client-only)
+  useEffect(() => {
+    setAttemptCount(readAttempts(storageKeys.tryoutAttempts, paket.id));
+    setAttemptLoaded(true);
+  }, [paket.id]);
 
   const current = soalList[idx];
   const selected = current ? (answers[current.id] ?? null) : null;
@@ -51,25 +92,21 @@ export function TryoutExam({ paket }: Props) {
   const markedCount = soalList.filter((q) => marked[q.id]).length;
   const emptyCount = soalList.length - answeredCount;
   const progress = soalList.length > 0 ? Math.round((answeredCount / soalList.length) * 100) : 0;
+  const attemptsLeft = MAX_ATTEMPTS - attemptCount;
 
+  // Timer
   useEffect(() => {
     if (!hasStarted || submitted) return;
-
     const timer = window.setInterval(() => {
-      setTimeLeft((value) => {
-        if (value <= 1) {
+      setTimeLeft((v) => {
+        if (v <= 1) {
           window.clearInterval(timer);
-          window.setTimeout(() => {
-            setShowSubmitConfirm(false);
-            setSubmitted(true);
-          }, 0);
+          window.setTimeout(() => { setShowSubmitConfirm(false); setSubmitted(true); }, 0);
           return 0;
         }
-
-        return value - 1;
+        return v - 1;
       });
     }, 1000);
-
     return () => window.clearInterval(timer);
   }, [hasStarted, submitted]);
 
@@ -83,10 +120,14 @@ export function TryoutExam({ paket }: Props) {
     setMarked((prev) => ({ ...prev, [current.id]: !prev[current.id] }));
   };
 
-  const submitExam = () => {
-    setShowSubmitConfirm(false);
-    setSubmitted(true);
+  const handleStart = () => {
+    // Catat percobaan saat siswa mulai (bukan saat submit)
+    const next = incrementAttempts(storageKeys.tryoutAttempts, paket.id);
+    setAttemptCount(next);
+    setHasStarted(true);
   };
+
+  const submitExam = () => { setShowSubmitConfirm(false); setSubmitted(true); };
 
   const resetExam = () => {
     setSubmitted(false);
@@ -98,56 +139,31 @@ export function TryoutExam({ paket }: Props) {
     setTimeLeft(paket.durasiMenit * 60);
   };
 
-  const computeScore = useCallback(() => {
-    let benar = 0;
-    let salah = 0;
-    let kosong = 0;
+  const score: ScoreResult | null = useMemo(
+    () => (submitted ? computeScore(soalList, answers, paket.scoringType) : null),
+    [submitted, soalList, answers, paket.scoringType],
+  );
 
-    for (const q of soalList) {
-      const answer = answers[q.id];
-      if (answer == null) kosong++;
-      else if (answer === q.kunci) benar++;
-      else salah++;
-    }
-
-    const skor = benar * 4 + salah * -1;
-    return { benar, salah, kosong, skor, total: soalList.length };
-  }, [answers, soalList]);
-
+  // Simpan hasil & kirim ke server setelah submit
   useEffect(() => {
-    if (!submitted) return;
-
-    const latest = computeScore();
+    if (!submitted || !score) return;
     window.localStorage.setItem(
       storageKeys.latestTryoutResult,
-      JSON.stringify({
-        ...latest,
-        paketTitle: paket.title,
-        createdAt: new Date().toISOString(),
-      }),
+      JSON.stringify({ ...score, paketTitle: paket.title, createdAt: new Date().toISOString() }),
     );
-
     void fetch("/api/tryout/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paket: {
-          slug: paket.slug,
-          title: paket.title,
-          subtitle: paket.subtitle,
-          durasiMenit: paket.durasiMenit,
-          akses: paket.akses,
-        },
-        result: latest,
-        questions: soalList,
-        answers,
-      }),
+      body: JSON.stringify({ paket: { slug: paket.slug, title: paket.title, subtitle: paket.subtitle, durasiMenit: paket.durasiMenit, akses: paket.akses }, result: score, questions: soalList, answers }),
     });
-  }, [answers, computeScore, paket, soalList, submitted]);
+  }, [submitted, score, paket, soalList, answers]);
 
-  const result = submitted ? computeScore() : null;
-  const rationalization = result ? calculateRationalization(result) : null;
+  const rationalization = useMemo(
+    () => (score ? calculateRationalization(score) : null),
+    [score],
+  );
 
+  // ── Guard: soal kosong ──────────────────────────────────────────────────────
   if (!current) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12">
@@ -159,6 +175,12 @@ export function TryoutExam({ paket }: Props) {
     );
   }
 
+  // ── Guard: batas percobaan ──────────────────────────────────────────────────
+  if (attemptLoaded && attemptCount >= MAX_ATTEMPTS && !hasStarted) {
+    return <AttemptsBlocked paket={paket} />;
+  }
+
+  // ── Layar persiapan ─────────────────────────────────────────────────────────
   if (!hasStarted) {
     return (
       <div className="min-h-screen bg-slate-100 px-4 py-6">
@@ -184,8 +206,8 @@ export function TryoutExam({ paket }: Props) {
                     <p className="text-[10px] font-bold uppercase text-slate-300">Menit</p>
                   </div>
                   <div className="rounded-2xl bg-white/10 px-4 py-3">
-                    <p className="text-xl font-black">CBT</p>
-                    <p className="text-[10px] font-bold uppercase text-slate-300">Mode</p>
+                    <p className="text-xl font-black">{paket.scoringType === "irt" ? "IRT" : "CBT"}</p>
+                    <p className="text-[10px] font-bold uppercase text-slate-300">Scoring</p>
                   </div>
                 </div>
               </div>
@@ -201,9 +223,10 @@ export function TryoutExam({ paket }: Props) {
                     "Gunakan fitur ragu-ragu untuk menandai nomor yang ingin dicek ulang.",
                     "Saat waktu habis, sistem akan otomatis mengumpulkan jawaban.",
                     "Setelah dikumpulkan, jawaban dikunci dan pembahasan akan terbuka.",
+                    `Setiap paket hanya bisa dikerjakan maksimal ${MAX_ATTEMPTS}× — sisa percobaan paket ini: ${attemptsLeft}×.`,
                   ].map((rule, index) => (
                     <div key={rule} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white">
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black text-white ${index === 5 ? "bg-amber-500" : "bg-blue-600"}`}>
                         {index + 1}
                       </span>
                       <p className="text-sm font-medium leading-relaxed text-slate-700">{rule}</p>
@@ -221,16 +244,37 @@ export function TryoutExam({ paket }: Props) {
                   <Step title="Kumpulkan" body="Tekan kumpulkan saat yakin. Sistem akan meminta konfirmasi terlebih dahulu." />
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <h3 className="text-sm font-black text-blue-950">Sistem penilaian</h3>
-                  <p className="mt-1 text-sm font-medium leading-relaxed text-blue-900">{paket.scoring}</p>
+                <div className={`mt-6 rounded-2xl border p-4 ${paket.scoringType === "irt" ? "border-emerald-100 bg-emerald-50" : "border-blue-100 bg-blue-50"}`}>
+                  <h3 className={`text-sm font-black ${paket.scoringType === "irt" ? "text-emerald-950" : "text-blue-950"}`}>
+                    Sistem penilaian {paket.scoringType === "irt" ? "— IRT" : ""}
+                  </h3>
+                  <p className={`mt-1 text-sm font-medium leading-relaxed ${paket.scoringType === "irt" ? "text-emerald-900" : "text-blue-900"}`}>
+                    {paket.scoring}
+                  </p>
+                  {paket.scoringType === "irt" && (
+                    <p className="mt-2 text-xs font-semibold leading-relaxed text-emerald-800">
+                      Soal HOTS lebih berpengaruh ke skor. Kosong tidak dipotong — lebih baik kosong daripada menebak asal.
+                    </p>
+                  )}
+                </div>
+
+                {/* Attempt indicator */}
+                <div className={`mt-4 rounded-2xl border p-4 ${attemptsLeft <= 1 ? "border-rose-200 bg-rose-50" : "border-amber-100 bg-amber-50"}`}>
+                  <p className={`text-sm font-black ${attemptsLeft <= 1 ? "text-rose-800" : "text-amber-800"}`}>
+                    Percobaan tersisa: {attemptsLeft} dari {MAX_ATTEMPTS}
+                  </p>
+                  <div className="mt-2 flex gap-1">
+                    {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+                      <div key={i} className={`h-2 flex-1 rounded-full ${i < attemptCount ? "bg-slate-400" : attemptsLeft <= 1 ? "bg-rose-400" : "bg-amber-400"}`} />
+                    ))}
+                  </div>
                 </div>
 
                 <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4">
                   <input
                     type="checkbox"
                     checked={hasAgreed}
-                    onChange={(event) => setHasAgreed(event.target.checked)}
+                    onChange={(e) => setHasAgreed(e.target.checked)}
                     className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
                   />
                   <span className="text-sm font-semibold leading-relaxed text-slate-700">
@@ -248,7 +292,7 @@ export function TryoutExam({ paket }: Props) {
                   <button
                     type="button"
                     disabled={!hasAgreed}
-                    onClick={() => setHasStarted(true)}
+                    onClick={handleStart}
                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
                     Mulai ujian
@@ -263,33 +307,75 @@ export function TryoutExam({ paket }: Props) {
     );
   }
 
-  if (submitted && result) {
+  // ── Layar hasil ──────────────────────────────────────────────────────────────
+  if (submitted && score) {
+    const isIrt = score.scoringType === "irt";
+    const canRetry = attemptCount < MAX_ATTEMPTS;
+
     return (
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Hasil CBT</p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+                Hasil {isIrt ? "IRT" : "CBT"}
+              </p>
               <h1 className="mt-2 text-2xl font-black text-slate-950">{paket.title}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-                Skor dihitung otomatis setelah sesi dikumpulkan. Pembahasan dibuka agar siswa bisa evaluasi
-                nomor yang salah, kosong, dan ragu-ragu.
+                {isIrt
+                  ? "Skor dihitung menggunakan model IRT 3-PL per sub-tes. Setiap sub-tes menghasilkan estimasi kemampuan (θ) yang dikonversi ke skala 0–1000."
+                  : "Skor dihitung otomatis setelah sesi dikumpulkan. Pembahasan dibuka agar siswa bisa evaluasi nomor yang salah, kosong, dan ragu-ragu."}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-950 px-7 py-5 text-white">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-300">Skor akhir</p>
-              <p className="mt-1 text-4xl font-black">{result.skor}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-300">
+                {isIrt ? "Skor IRT" : "Skor akhir"}
+              </p>
+              <p className="mt-1 text-4xl font-black">{score.skor}</p>
+              {isIrt && <p className="mt-1 text-xs text-slate-400">skala 0–1000</p>}
             </div>
           </div>
 
           <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Benar" value={String(result.benar)} tone="emerald" />
-            <Stat label="Salah" value={String(result.salah)} tone="rose" />
-            <Stat label="Kosong" value={String(result.kosong)} tone="slate" />
+            <Stat label="Benar" value={String(score.benar)} tone="emerald" />
+            <Stat label="Salah" value={String(score.salah)} tone="rose" />
+            <Stat label="Kosong" value={String(score.kosong)} tone="slate" />
             <Stat label="Ditandai" value={String(markedCount)} tone="amber" />
           </div>
 
-          {rationalization && (
+          {/* IRT Sub-tes scores */}
+          {isIrt && Object.keys(score.bagianStats).length > 0 && (
+            <div className="mt-7 rounded-3xl border border-emerald-100 bg-emerald-50 p-5">
+              <p className="text-sm font-black text-emerald-900">Skor IRT per Sub-Tes (200–800)</p>
+              <div className="mt-4 space-y-3">
+                {Object.entries(score.bagianStats).map(([bagian, stat]) => {
+                  const subScore = stat.irtScore ?? 500;
+                  const pct = Math.round(((subScore - 200) / 600) * 100);
+                  const barColor = subScore >= 600 ? "bg-emerald-500" : subScore >= 450 ? "bg-amber-400" : "bg-rose-500";
+                  return (
+                    <div key={bagian}>
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="font-black text-emerald-900">{bagian}</span>
+                        <div className="flex items-center gap-3 text-xs font-bold text-emerald-700">
+                          <span>{stat.benar}✓ {stat.salah}✗ {stat.kosong}○</span>
+                          <span className="w-12 text-right font-black text-emerald-950">{subScore}</span>
+                        </div>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-emerald-200">
+                        <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs font-semibold text-emerald-700">
+                Sub-skor &lt;450 → perlu penguatan · 450–599 → bisa dioptimalkan · ≥600 → sudah kuat
+              </p>
+            </div>
+          )}
+
+          {/* Rasionalisasi (classical only) */}
+          {!isIrt && rationalization && (
             <div className="mt-7 rounded-3xl border border-blue-100 bg-blue-50 p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -353,23 +439,36 @@ export function TryoutExam({ paket }: Props) {
             </div>
           )}
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/siswa/tryout"
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
-            >
-              Kembali ke paket
-            </Link>
-            <button
-              type="button"
-              onClick={resetExam}
-              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700"
-            >
-              Ulangi simulasi
-            </button>
+          {/* Attempt counter + action buttons */}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-500">
+              Percobaan terpakai: <span className="font-black text-slate-900">{attemptCount}/{MAX_ATTEMPTS}</span>
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/siswa/tryout"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                Kembali ke paket
+              </Link>
+              {canRetry ? (
+                <button
+                  type="button"
+                  onClick={resetExam}
+                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700"
+                >
+                  Ulangi ({MAX_ATTEMPTS - attemptCount}× tersisa)
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-500">
+                  <Ban size={16} /> Batas percobaan tercapai
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Pembahasan per nomor */}
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-black text-slate-950">Pembahasan per nomor</h2>
@@ -384,30 +483,14 @@ export function TryoutExam({ paket }: Props) {
             return (
               <div key={q.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
-                    No. {q.nomor}
-                  </span>
-                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
-                    {q.bagian}
-                  </span>
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800">
-                    {q.tingkat}
-                  </span>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                      ok
-                        ? "bg-emerald-100 text-emerald-800"
-                        : isEmpty
-                          ? "bg-slate-100 text-slate-700"
-                          : "bg-rose-100 text-rose-800"
-                    }`}
-                  >
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">No. {q.nomor}</span>
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">{q.bagian}</span>
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800">{q.tingkat}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${ok ? "bg-emerald-100 text-emerald-800" : isEmpty ? "bg-slate-100 text-slate-700" : "bg-rose-100 text-rose-800"}`}>
                     {ok ? "Benar" : isEmpty ? "Kosong" : "Salah"}
                   </span>
                   {marked[q.id] && (
-                    <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-bold text-orange-800">
-                      Ragu-ragu
-                    </span>
+                    <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-bold text-orange-800">Ragu-ragu</span>
                   )}
                 </div>
                 <p className="mt-4 text-sm font-semibold leading-relaxed text-slate-900">{q.pertanyaan}</p>
@@ -415,7 +498,7 @@ export function TryoutExam({ paket }: Props) {
                   <p>
                     <span className="font-bold text-emerald-700">Kunci: {q.kunci}</span>
                     <span className="px-2 text-slate-300">|</span>
-                    Jawaban Anda: {answer ?? "-"}
+                    Jawaban kamu: {answer ?? "-"}
                   </p>
                   <p className="mt-2 leading-relaxed">{q.pembahasan}</p>
                 </div>
@@ -427,24 +510,21 @@ export function TryoutExam({ paket }: Props) {
     );
   }
 
+  // ── Layar ujian aktif ────────────────────────────────────────────────────────
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-100">
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Mode CBT</p>
-            <h1 className="mt-1 text-xl font-black text-slate-950">{paket.title}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {soalList.length} soal - {paket.scoring}
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+              Mode {paket.scoringType === "irt" ? "IRT" : "CBT"}
             </p>
+            <h1 className="mt-1 text-xl font-black text-slate-950">{paket.title}</h1>
+            <p className="mt-1 text-sm text-slate-600">{soalList.length} soal · {paket.scoring}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div
-              className={`inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black ${
-                timeLeft <= 300 ? "bg-rose-600 text-white" : "bg-slate-950 text-white"
-              }`}
-            >
+            <div className={`inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black ${timeLeft <= 300 ? "bg-rose-600 text-white" : "bg-slate-950 text-white"}`}>
               <Clock3 size={18} />
               {formatTime(timeLeft)}
             </div>
@@ -471,18 +551,21 @@ export function TryoutExam({ paket }: Props) {
                 <span className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
                   {current.bagian}
                 </span>
-                <span className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                <span className={`rounded-xl px-3 py-1.5 text-xs font-bold ring-1 ${
+                  current.tingkat === "HOTS"
+                    ? "bg-rose-50 text-rose-700 ring-rose-200"
+                    : current.tingkat === "SEDANG"
+                      ? "bg-amber-50 text-amber-700 ring-amber-200"
+                      : "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                }`}>
                   {current.tingkat}
+                  {paket.scoringType === "irt" && current.tingkat === "HOTS" && " ★"}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={toggleMark}
-                className={`inline-flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${
-                  marked[current.id]
-                    ? "bg-orange-100 text-orange-800 ring-1 ring-orange-200"
-                    : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-                }`}
+                className={`inline-flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${marked[current.id] ? "bg-orange-100 text-orange-800 ring-1 ring-orange-200" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"}`}
               >
                 <Flag size={15} />
                 {marked[current.id] ? "Ragu-ragu" : "Tandai ragu"}
@@ -492,7 +575,6 @@ export function TryoutExam({ paket }: Props) {
 
           <div className="min-h-[520px] px-5 py-6 sm:px-7">
             <p className="text-base font-bold leading-8 text-slate-950">{current.pertanyaan}</p>
-
             <div className="mt-7 space-y-3">
               {choiceKeys.map((key) => {
                 const active = selected === key;
@@ -501,17 +583,9 @@ export function TryoutExam({ paket }: Props) {
                     key={key}
                     type="button"
                     onClick={() => setAnswer(key)}
-                    className={`flex w-full items-start gap-4 rounded-2xl border px-4 py-4 text-left text-sm transition ${
-                      active
-                        ? "border-blue-500 bg-blue-50 text-blue-950 shadow-sm ring-2 ring-blue-100"
-                        : "border-slate-200 bg-white text-slate-800 hover:border-blue-200 hover:bg-slate-50"
-                    }`}
+                    className={`flex w-full items-start gap-4 rounded-2xl border px-4 py-4 text-left text-sm transition ${active ? "border-blue-500 bg-blue-50 text-blue-950 shadow-sm ring-2 ring-blue-100" : "border-slate-200 bg-white text-slate-800 hover:border-blue-200 hover:bg-slate-50"}`}
                   >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-black ${
-                        active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"
-                      }`}
-                    >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-black ${active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`}>
                       {key}
                     </span>
                     <span className="pt-1 leading-relaxed">{current.opsi[key]}</span>
@@ -533,11 +607,9 @@ export function TryoutExam({ paket }: Props) {
                 <ListChecks size={20} />
               </div>
             </div>
-
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
               <div className="h-full rounded-full bg-blue-600" style={{ width: `${progress}%` }} />
             </div>
-
             <div className="mt-4 grid grid-cols-3 gap-2">
               <MiniStat label="Terisi" value={answeredCount} tone="emerald" />
               <MiniStat label="Kosong" value={emptyCount} tone="slate" />
@@ -550,28 +622,18 @@ export function TryoutExam({ paket }: Props) {
               <p className="text-xs font-black uppercase tracking-wide text-slate-500">Navigasi soal</p>
               <span className="text-xs font-bold text-slate-500">{idx + 1}/{soalList.length}</span>
             </div>
-
             <div className="mt-4 max-h-[490px] overflow-y-auto pr-1">
               <div className="grid grid-cols-5 gap-2">
                 {soalList.map((q, i) => {
                   const filled = answers[q.id] != null;
                   const isMarked = marked[q.id];
                   const active = i === idx;
-
                   return (
                     <button
                       key={q.id}
                       type="button"
                       onClick={() => setIdx(i)}
-                      className={`relative h-10 rounded-xl text-xs font-black transition ${
-                        active
-                          ? "bg-blue-600 text-white ring-2 ring-blue-200"
-                          : isMarked
-                            ? "bg-orange-100 text-orange-900 hover:bg-orange-200"
-                            : filled
-                              ? "bg-emerald-100 text-emerald-900 hover:bg-emerald-200"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      }`}
+                      className={`relative h-10 rounded-xl text-xs font-black transition ${active ? "bg-blue-600 text-white ring-2 ring-blue-200" : isMarked ? "bg-orange-100 text-orange-900 hover:bg-orange-200" : filled ? "bg-emerald-100 text-emerald-900 hover:bg-emerald-200" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
                       aria-label={`Soal ${q.nomor}`}
                     >
                       {q.nomor}
@@ -581,7 +643,6 @@ export function TryoutExam({ paket }: Props) {
                 })}
               </div>
             </div>
-
             <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600">
               <Legend color="bg-blue-600" label="Aktif" />
               <Legend color="bg-emerald-400" label="Terjawab" />
@@ -592,6 +653,7 @@ export function TryoutExam({ paket }: Props) {
         </aside>
       </main>
 
+      {/* Bottom nav */}
       <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <button
@@ -600,23 +662,19 @@ export function TryoutExam({ paket }: Props) {
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
             className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <ChevronLeft size={18} />
-            Sebelumnya
+            <ChevronLeft size={18} /> Sebelumnya
           </button>
-
           <div className="hidden items-center gap-2 text-xs font-bold text-slate-500 sm:flex">
             <Bookmark size={15} />
             Jawaban tersimpan otomatis selama sesi ini
           </div>
-
           {idx < soalList.length - 1 ? (
             <button
               type="button"
               onClick={() => setIdx((i) => Math.min(soalList.length - 1, i + 1))}
               className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-blue-700"
             >
-              Berikutnya
-              <ChevronRight size={18} />
+              Berikutnya <ChevronRight size={18} />
             </button>
           ) : (
             <button
@@ -624,13 +682,13 @@ export function TryoutExam({ paket }: Props) {
               onClick={() => setShowSubmitConfirm(true)}
               className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-emerald-700"
             >
-              <FileCheck2 size={18} />
-              Selesai
+              <FileCheck2 size={18} /> Selesai
             </button>
           )}
         </div>
       </div>
 
+      {/* Konfirmasi submit */}
       {showSubmitConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
@@ -653,13 +711,11 @@ export function TryoutExam({ paket }: Props) {
                 <X size={20} />
               </button>
             </div>
-
             <div className="mt-5 grid grid-cols-3 gap-2">
               <MiniStat label="Terisi" value={answeredCount} tone="emerald" />
               <MiniStat label="Kosong" value={emptyCount} tone="slate" />
               <MiniStat label="Ragu" value={markedCount} tone="amber" />
             </div>
-
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
@@ -683,31 +739,22 @@ export function TryoutExam({ paket }: Props) {
   );
 }
 
+// ─── Utility components ───────────────────────────────────────────────────────
+
 function formatTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds
-    .toString()
-    .padStart(2, "0")}`;
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "emerald" | "rose" | "slate" | "amber";
-}) {
+function Stat({ label, value, tone }: { label: string; value: string; tone: "emerald" | "rose" | "slate" | "amber" }) {
   const styles = {
     emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
     rose: "border-rose-200 bg-rose-50 text-rose-800",
     slate: "border-slate-200 bg-slate-50 text-slate-800",
     amber: "border-amber-200 bg-amber-50 text-amber-800",
   };
-
   return (
     <div className={`rounded-2xl border p-4 ${styles[tone]}`}>
       <p className="text-[11px] font-bold uppercase tracking-wide opacity-70">{label}</p>
@@ -723,25 +770,15 @@ function getRationalTone(tone: "emerald" | "blue" | "amber" | "rose") {
     amber: "bg-amber-100 text-amber-800",
     rose: "bg-rose-100 text-rose-800",
   };
-
   return styles[tone];
 }
 
-function MiniStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "emerald" | "slate" | "amber";
-}) {
+function MiniStat({ label, value, tone }: { label: string; value: number; tone: "emerald" | "slate" | "amber" }) {
   const styles = {
     emerald: "bg-emerald-50 text-emerald-800",
     slate: "bg-slate-100 text-slate-700",
     amber: "bg-orange-50 text-orange-800",
   };
-
   return (
     <div className={`rounded-2xl px-3 py-3 text-center ${styles[tone]}`}>
       <p className="text-lg font-black">{value}</p>
@@ -767,4 +804,3 @@ function Legend({ color, label }: { color: string; label: string }) {
     </div>
   );
 }
-

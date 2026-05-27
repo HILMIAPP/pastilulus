@@ -51,7 +51,8 @@ export default async function LearningModulePage({ params }: PageProps) {
 
   const isUmptkin = learningModule.jalur === "umptkin";
   const isTracker = learningModule.type === "tracker";
-  const primaryPdf = isTracker ? learningResources.logbookPdf : learningResources.masterPdf;
+  const fallbackPdf = isTracker ? learningResources.logbookPdf : learningResources.masterPdf;
+  const primaryPdf = learningModule.pdfUrl ?? fallbackPdf;
   const primaryDocx = isTracker ? learningResources.logbookDocx : learningResources.masterDocx;
   const allModules = [...learningModules, ...umptkinModules];
   const relatedModules = allModules

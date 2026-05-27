@@ -4,9 +4,17 @@ import { BlogVisual } from "@/components/blog-visual";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getPublicBlogPosts } from "@/lib/public-content";
+import { seoBlogSeedPosts } from "@/lib/seo-blog-seed";
 import { site } from "@/lib/site-config";
 
-const fallbackPosts: { id: string; slug: string; title: string; category: string; date: string; excerpt: string }[] = [];
+const fallbackPosts = seoBlogSeedPosts.map((p, i) => ({
+  id: `seed-${i}`,
+  slug: p.slug,
+  title: p.title,
+  category: p.category,
+  excerpt: p.excerpt,
+  date: "Mei 2026",
+}));
 
 export const metadata = {
   title: "Blog & Tips Ujian Mandiri",

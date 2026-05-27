@@ -24,24 +24,18 @@ import {
 import type { AppSession } from "@/lib/session-codec";
 import { site, storageKeys } from "@/lib/site-config";
 
-const steps = ["Profil", "Target", "Akademik", "Jadwal", "Rencana"];
-const studentStatuses = ["Kelas 12", "Gap year", "Kelas 11", "Lulusan tahun ini"];
-const schoolTracks = ["IPA", "IPS", "Bahasa", "SMK", "Campuran"];
-const majorGroups = [
-  "Kedokteran/Kesehatan",
-  "Teknik/Komputer",
-  "Saintek umum",
-  "Sosial humaniora",
-  "Ekonomi/Bisnis",
-  "Pendidikan",
-  "Seni/Olahraga",
-  "Belum yakin",
+const STEPS = ["Profil", "Target", "Akademik", "Jadwal", "Rencana"] as const;
+const STUDENT_STATUSES = ["Kelas 12", "Gap year", "Kelas 11", "Lulusan tahun ini"];
+const SCHOOL_TRACKS = ["IPA", "IPS", "Bahasa", "SMK", "Campuran"];
+const MAJOR_GROUPS = [
+  "Kedokteran/Kesehatan", "Teknik/Komputer", "Saintek umum",
+  "Sosial humaniora", "Ekonomi/Bisnis", "Pendidikan", "Seni/Olahraga", "Belum yakin",
 ];
-const reminderOptions = ["Deadline PTN", "Tryout mingguan", "Belajar harian"];
+const REMINDER_OPTIONS = ["Deadline PTN", "Tryout mingguan", "Belajar harian"];
+const STUDY_DAYS = [1, 2, 3, 4, 5, 6, 7];
+const STUDY_HOURS = [1, 2, 3, 4, 5, 6];
 
-type Props = {
-  session: AppSession | null;
-};
+type Props = { session: AppSession | null };
 
 export function OnboardingFlow({ session }: Props) {
   const router = useRouter();
@@ -66,31 +60,26 @@ export function OnboardingFlow({ session }: Props) {
   const recommendation = useMemo(() => buildStudyRecommendation(profile), [profile]);
   const selectedTargets = ptnDeadlines.filter((ptn) => profile.targetPtnIds.includes(ptn.id));
   const canContinue = validateStep(step, profile);
-  const progress = Math.round(((step + 1) / steps.length) * 100);
 
-  const updateProfile = <K extends keyof OnboardingProfile>(key: K, value: OnboardingProfile[K]) => {
-    setProfile((current) => ({ ...current, [key]: value }));
-  };
+  const updateProfile = <K extends keyof OnboardingProfile>(key: K, value: OnboardingProfile[K]) =>
+    setProfile((curr) => ({ ...curr, [key]: value }));
 
-  const toggleTarget = (id: string) => {
-    setProfile((current) => {
-      const exists = current.targetPtnIds.includes(id);
+  const toggleTarget = (id: string) =>
+    setProfile((curr) => {
+      const exists = curr.targetPtnIds.includes(id);
       const targetPtnIds = exists
-        ? current.targetPtnIds.filter((targetId) => targetId !== id)
-        : [...current.targetPtnIds, id].slice(0, 5);
-
-      return { ...current, targetPtnIds };
+        ? curr.targetPtnIds.filter((t) => t !== id)
+        : [...curr.targetPtnIds, id].slice(0, 5);
+      return { ...curr, targetPtnIds };
     });
-  };
 
-  const toggleReminder = (value: string) => {
-    setProfile((current) => ({
-      ...current,
-      reminders: current.reminders.includes(value)
-        ? current.reminders.filter((item) => item !== value)
-        : [...current.reminders, value],
+  const toggleReminder = (value: string) =>
+    setProfile((curr) => ({
+      ...curr,
+      reminders: curr.reminders.includes(value)
+        ? curr.reminders.filter((r) => r !== value)
+        : [...curr.reminders, value],
     }));
-  };
 
   const finishOnboarding = () => {
     const completedProfile = { ...profile, completedAt: new Date().toISOString() };
@@ -100,271 +89,356 @@ export function OnboardingFlow({ session }: Props) {
   };
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="bg-slate-950 px-6 py-7 text-white sm:px-8">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-blue-300">Onboarding siswa baru</p>
-          <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight">
-            Bikin rencana belajar mandiri yang langsung nyambung ke target PTN.
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-300">
-            Isi 2-4 menit. Setelah selesai, dashboard akan menampilkan target, deadline, materi prioritas, dan
-            rekomendasi tryout pertama.
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-50">
+      {/* ── Top bar ── */}
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
+        <div className="mx-auto flex max-w-2xl items-center gap-4">
+          {/* Back */}
+          <button
+            type="button"
+            onClick={() => (step === 0 ? router.push("/siswa") : setStep((s) => s - 1))}
+            className="shrink-0 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            <ArrowLeft size={18} />
+          </button>
 
-        <div className="border-b border-slate-200 px-6 py-5 sm:px-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {steps.map((label, index) => (
-                <span
-                  key={label}
-                  className={`rounded-2xl px-3 py-1.5 text-xs font-black ${
-                    index === step ? "bg-blue-600 text-white" : index < step ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {index + 1}. {label}
-                </span>
-              ))}
-            </div>
-            <span className="text-sm font-black text-slate-500">{progress}%</span>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
-
-        <div className="p-6 sm:p-8">
-          {step === 0 && (
-            <StepShell icon={User} title="Kenalan dulu" desc="Data ini dipakai untuk membuat dashboard terasa personal.">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Nama panggilan">
-                  <input
-                    value={profile.nickname}
-                    onChange={(event) => updateProfile("nickname", event.target.value)}
-                    placeholder="Contoh: Nuka"
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </Field>
-                <Field label="Domisili/kota">
-                  <input
-                    value={profile.city}
-                    onChange={(event) => updateProfile("city", event.target.value)}
-                    placeholder="Contoh: Bandung"
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </Field>
-                <ChoiceGroup
-                  label="Status sekarang"
-                  options={studentStatuses}
-                  value={profile.status}
-                  onChange={(value) => updateProfile("status", value)}
-                />
-                <ChoiceGroup
-                  label="Jurusan sekolah"
-                  options={schoolTracks}
-                  value={profile.schoolTrack}
-                  onChange={(value) => updateProfile("schoolTrack", value)}
-                />
-              </div>
-            </StepShell>
-          )}
-
-          {step === 1 && (
-            <StepShell icon={Target} title="Pilih target PTN" desc="Pilih maksimal 5 kampus. Nanti bisa diubah lagi dari Info PTN.">
-              <div className="grid gap-3 md:grid-cols-2">
-                {ptnDeadlines.map((ptn) => {
-                  const active = profile.targetPtnIds.includes(ptn.id);
-                  return (
-                    <button
-                      key={ptn.id}
-                      type="button"
-                      onClick={() => toggleTarget(ptn.id)}
-                      className={`rounded-2xl border p-4 text-left transition ${
-                        active ? "border-blue-500 bg-blue-50 ring-4 ring-blue-100" : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-black text-slate-950">{ptn.shortName}</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-600">{ptn.name}</p>
-                        </div>
-                        {active && <CheckCircle2 size={20} className="text-blue-700" />}
-                      </div>
-                      <p className="mt-3 text-xs font-bold text-slate-500">Tutup: {ptn.closeAt}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </StepShell>
-          )}
-
-          {step === 2 && (
-            <StepShell icon={BookOpen} title="Cek kondisi akademik" desc="Jujur di tahap ini lebih penting daripada terlihat kuat.">
-              <ChoiceGroup
-                label="Rumpun prodi utama"
-                options={majorGroups}
-                value={profile.primaryMajorGroup}
-                onChange={(value) => updateProfile("primaryMajorGroup", value)}
+          {/* Step dots */}
+          <div className="flex flex-1 items-center gap-1.5">
+            {STEPS.map((label, i) => (
+              <div
+                key={label}
+                title={label}
+                className={`h-1.5 flex-1 rounded-full transition-all ${
+                  i <= step ? "bg-slate-950" : "bg-slate-200"
+                }`}
               />
+            ))}
+          </div>
 
-              <div className="mt-6 grid gap-3">
-                {Object.entries(profile.academic).map(([subject, level]) => (
-                  <div key={subject} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="font-black text-slate-950">{subject}</p>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      {(["lemah", "sedang", "kuat"] as AcademicLevel[]).map((option) => (
+          {/* Step counter */}
+          <span className="shrink-0 text-xs font-bold text-slate-400">
+            {step + 1} / {STEPS.length}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Step content ── */}
+      <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8">
+
+        {/* Step 0 — Profil */}
+        {step === 0 && (
+          <StepShell icon={User} title="Kenalan dulu 👋" desc="Data ini bikin dashboard kamu terasa personal.">
+            <div className="space-y-4">
+              <Field label="Nama panggilan">
+                <input
+                  value={profile.nickname}
+                  onChange={(e) => updateProfile("nickname", e.target.value)}
+                  placeholder="Contoh: Nuka"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Domisili / kota">
+                <input
+                  value={profile.city}
+                  onChange={(e) => updateProfile("city", e.target.value)}
+                  placeholder="Contoh: Bandung"
+                  className={inputCls}
+                />
+              </Field>
+              <PillGroup
+                label="Status sekarang"
+                options={STUDENT_STATUSES}
+                value={profile.status}
+                onChange={(v) => updateProfile("status", v)}
+              />
+              <PillGroup
+                label="Jurusan sekolah"
+                options={SCHOOL_TRACKS}
+                value={profile.schoolTrack}
+                onChange={(v) => updateProfile("schoolTrack", v)}
+              />
+            </div>
+          </StepShell>
+        )}
+
+        {/* Step 1 — Target PTN */}
+        {step === 1 && (
+          <StepShell
+            icon={Target}
+            title="Pilih target PTN 🎯"
+            desc={`Pilih maksimal 5 kampus. Dipilih: ${profile.targetPtnIds.length}/5`}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ptnDeadlines.map((ptn) => {
+                const active = profile.targetPtnIds.includes(ptn.id);
+                return (
+                  <button
+                    key={ptn.id}
+                    type="button"
+                    onClick={() => toggleTarget(ptn.id)}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      active
+                        ? "border-slate-950 bg-slate-950 text-white"
+                        : "border-slate-200 bg-white text-slate-900 hover:border-slate-400"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-black">{ptn.shortName}</p>
+                        <p className={`mt-0.5 text-xs ${active ? "text-slate-300" : "text-slate-500"}`}>
+                          {ptn.name}
+                        </p>
+                      </div>
+                      {active && <CheckCircle2 size={18} className="shrink-0 text-white" />}
+                    </div>
+                    <p className={`mt-3 text-[11px] font-semibold ${active ? "text-slate-400" : "text-slate-400"}`}>
+                      Tutup: {ptn.closeAt}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </StepShell>
+        )}
+
+        {/* Step 2 — Akademik */}
+        {step === 2 && (
+          <StepShell
+            icon={BookOpen}
+            title="Kondisi akademik kamu 📚"
+            desc="Jujur di sini lebih penting dari terlihat kuat."
+          >
+            <PillGroup
+              label="Rumpun prodi utama"
+              options={MAJOR_GROUPS}
+              value={profile.primaryMajorGroup}
+              onChange={(v) => updateProfile("primaryMajorGroup", v)}
+            />
+
+            <div className="mt-6 space-y-3">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                Nilai diri sendiri per mapel
+              </p>
+              {Object.entries(profile.academic).map(([subject, level]) => (
+                <div key={subject} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-sm font-bold text-slate-900">{subject}</p>
+                  <div className="mt-3 flex gap-2">
+                    {(["lemah", "sedang", "kuat"] as AcademicLevel[]).map((opt) => {
+                      const emoji = opt === "lemah" ? "😰" : opt === "sedang" ? "😐" : "💪";
+                      return (
                         <button
-                          key={option}
+                          key={opt}
                           type="button"
-                          onClick={() =>
-                            updateProfile("academic", {
-                              ...profile.academic,
-                              [subject]: option,
-                            })
-                          }
-                          className={`rounded-xl px-3 py-2 text-xs font-black capitalize ${
-                            level === option ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
+                          onClick={() => updateProfile("academic", { ...profile.academic, [subject]: opt })}
+                          className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-black capitalize transition ${
+                            level === opt
+                              ? "bg-slate-950 text-white"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           }`}
                         >
-                          {option}
+                          <span>{emoji}</span> {opt}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </StepShell>
+        )}
+
+        {/* Step 3 — Jadwal */}
+        {step === 3 && (
+          <StepShell
+            icon={CalendarDays}
+            title="Ritme belajar kamu ⏰"
+            desc={`${site.name} akan menyesuaikan rekomendasi dengan waktu yang realistis.`}
+          >
+            <div className="space-y-6">
+              {/* Study days */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                  Hari belajar per minggu
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {STUDY_DAYS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => updateProfile("studyDays", String(n))}
+                      className={`flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-black transition ${
+                        profile.studyDays === String(n)
+                          ? "bg-slate-950 text-white"
+                          : "border border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  {Number(profile.studyDays)} hari dipilih
+                </p>
+              </div>
+
+              {/* Study hours */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                  Jam belajar per hari
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {STUDY_HOURS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => updateProfile("studyDuration", String(n))}
+                      className={`flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-black transition ${
+                        profile.studyDuration === String(n)
+                          ? "bg-slate-950 text-white"
+                          : "border border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  {Number(profile.studyDuration)} jam per hari
+                </p>
+              </div>
+
+              {/* Time of day */}
+              <PillGroup
+                label="Waktu favorit"
+                options={["Pagi", "Siang", "Malam"]}
+                value={profile.studyTime}
+                onChange={(v) => updateProfile("studyTime", v)}
+              />
+
+              {/* Reminders */}
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">Aktifkan reminder</p>
+                <div className="mt-3 space-y-2">
+                  {REMINDER_OPTIONS.map((opt) => {
+                    const active = profile.reminders.includes(opt);
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => toggleReminder(opt)}
+                        className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold transition ${
+                          active
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                        }`}
+                      >
+                        {opt}
+                        <Bell size={15} className={active ? "text-slate-300" : "text-slate-400"} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </StepShell>
+        )}
+
+        {/* Step 4 — Rencana */}
+        {step === 4 && (
+          <StepShell
+            icon={GraduationCap}
+            title={`Rencana awal kamu${profile.nickname ? `, ${profile.nickname}` : ""} 🚀`}
+            desc="Klik Mulai belajar untuk simpan dan buka dashboard."
+          >
+            {/* Target chips */}
+            {selectedTargets.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">Target kampus</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedTargets.map((ptn) => (
+                    <span
+                      key={ptn.id}
+                      className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white"
+                    >
+                      {ptn.shortName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommendation summary */}
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">Fokus materi</p>
+              <div className="mt-3 space-y-2">
+                {recommendation.focusSubjects.map((subject) => (
+                  <div key={subject} className="flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900">
+                    <CheckCircle2 size={15} className="shrink-0 text-[#0A66FF]" />
+                    {subject}
                   </div>
                 ))}
               </div>
-            </StepShell>
-          )}
+            </div>
 
-          {step === 3 && (
-            <StepShell icon={CalendarDays} title="Atur ritme belajar" desc={`${site.name} akan menyesuaikan rekomendasi dengan waktu yang realistis.`}>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Hari belajar per minggu">
-                  <input
-                    type="number"
-                    min="1"
-                    max="7"
-                    value={profile.studyDays}
-                    onChange={(event) => updateProfile("studyDays", event.target.value)}
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </Field>
-                <Field label="Jam belajar per hari">
-                  <input
-                    type="number"
-                    min="1"
-                    max="8"
-                    value={profile.studyDuration}
-                    onChange={(event) => updateProfile("studyDuration", event.target.value)}
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </Field>
-                <ChoiceGroup
-                  label="Waktu favorit"
-                  options={["Pagi", "Siang", "Malam"]}
-                  value={profile.studyTime}
-                  onChange={(value) => updateProfile("studyTime", value)}
-                />
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">Reminder</p>
-                  <div className="mt-3 grid gap-2">
-                    {reminderOptions.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => toggleReminder(option)}
-                        className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-black ${
-                          profile.reminders.includes(option)
-                            ? "border-blue-400 bg-blue-50 text-blue-800"
-                            : "border-slate-200 bg-white text-slate-600"
-                        }`}
-                      >
-                        {option}
-                        <Bell size={16} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            {/* Weekly plan */}
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-500">Minggu pertama</p>
+                <span className="rounded-full border border-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
+                  Intensitas: {recommendation.intensity}
+                </span>
               </div>
-            </StepShell>
-          )}
-
-          {step === 4 && (
-            <StepShell icon={GraduationCap} title="Rencana awal kamu" desc="Ini akan tersimpan ke dashboard setelah kamu klik selesai.">
-              <div className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
-                <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5">
-                  <p className="text-sm font-black text-blue-900">Target utama</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {selectedTargets.map((ptn) => (
-                      <span key={ptn.id} className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-800">
-                        {ptn.shortName}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-5 text-sm font-black text-blue-900">Fokus materi</p>
-                  <div className="mt-3 grid gap-2">
-                    {recommendation.focusSubjects.map((subject) => (
-                      <div key={subject} className="rounded-2xl bg-white p-3 text-sm font-bold text-blue-950">
-                        {subject}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm font-black text-slate-950">Rekomendasi minggu pertama</p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                    Intensitas: <strong>{recommendation.intensity}</strong>. Mulai dari <strong>{recommendation.firstTryout}</strong>.
+              <div className="mt-3 space-y-2">
+                {recommendation.weeklyPlan.map((item) => (
+                  <p key={item} className="flex gap-2 text-sm text-slate-600">
+                    <span className="mt-0.5 shrink-0 text-slate-300">—</span>
+                    {item}
                   </p>
-                  <div className="mt-4 grid gap-2">
-                    {recommendation.weeklyPlan.map((item) => (
-                      <div key={item} className="flex gap-2 text-sm font-semibold text-slate-700">
-                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-blue-700" />
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-            </StepShell>
+            </div>
+          </StepShell>
+        )}
+
+        {/* ── Navigation ── */}
+        <div className="mt-8 flex items-center justify-between">
+          {/* Skip/Back — handled by top bar back button, but keep skip on step 0 */}
+          {step === 0 && (
+            <button
+              type="button"
+              onClick={() => router.push("/siswa")}
+              className="text-sm font-semibold text-slate-400 hover:text-slate-700"
+            >
+              Lewati dulu
+            </button>
           )}
-        </div>
+          {step > 0 && <div />}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-6 py-5 sm:px-8">
-          <button
-            type="button"
-            onClick={() => (step === 0 ? router.push("/siswa") : setStep((value) => value - 1))}
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50"
-          >
-            <ArrowLeft size={17} />
-            {step === 0 ? "Lewati dulu" : "Kembali"}
-          </button>
-
-          {step < steps.length - 1 ? (
+          {step < STEPS.length - 1 ? (
             <button
               type="button"
               disabled={!canContinue}
-              onClick={() => setStep((value) => value + 1)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              onClick={() => setStep((s) => s + 1)}
+              className="ml-auto inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
             >
-              Lanjut
-              <ArrowRight size={17} />
+              Lanjut <ArrowRight size={16} />
             </button>
           ) : (
             <button
               type="button"
               onClick={finishOnboarding}
-              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700"
+              className="ml-auto inline-flex items-center gap-2 rounded-2xl bg-[#0A66FF] px-6 py-3 text-sm font-black text-white transition hover:bg-[#0052D6]"
             >
-              Simpan & buka dashboard
-              <ArrowRight size={17} />
+              Mulai belajar <ArrowRight size={16} />
             </button>
           )}
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
+
+/* ── Helpers ──────────────────────────────────────────────────────────── */
 
 function validateStep(step: number, profile: OnboardingProfile) {
   if (step === 0) return profile.nickname.trim().length > 0 && profile.city.trim().length > 0;
@@ -373,6 +447,9 @@ function validateStep(step: number, profile: OnboardingProfile) {
   if (step === 3) return Number(profile.studyDays) > 0 && Number(profile.studyDuration) > 0;
   return true;
 }
+
+const inputCls =
+  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10";
 
 function StepShell({
   icon: Icon,
@@ -387,14 +464,12 @@ function StepShell({
 }) {
   return (
     <div>
-      <div className="mb-6 flex gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
-          <Icon size={23} />
+      <div className="mb-8">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+          <Icon size={20} />
         </div>
-        <div>
-          <h2 className="text-2xl font-black text-slate-950">{title}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-slate-600">{desc}</p>
-        </div>
+        <h2 className="mt-4 text-2xl font-black text-slate-950">{title}</h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-500">{desc}</p>
       </div>
       {children}
     </div>
@@ -403,14 +478,14 @@ function StepShell({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label>
+    <label className="block">
       <span className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
       <div className="mt-2">{children}</div>
     </label>
   );
 }
 
-function ChoiceGroup({
+function PillGroup({
   label,
   options,
   value,
@@ -419,22 +494,24 @@ function ChoiceGroup({
   label: string;
   options: string[];
   value: string;
-  onChange: (value: string) => void;
+  onChange: (v: string) => void;
 }) {
   return (
     <div>
       <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {options.map((option) => (
+        {options.map((opt) => (
           <button
-            key={option}
+            key={opt}
             type="button"
-            onClick={() => onChange(option)}
-            className={`rounded-2xl px-4 py-2 text-sm font-black ${
-              value === option ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            onClick={() => onChange(opt)}
+            className={`rounded-2xl px-4 py-2 text-sm font-bold transition ${
+              value === opt
+                ? "bg-slate-950 text-white"
+                : "border border-slate-200 bg-white text-slate-600 hover:border-slate-400"
             }`}
           >
-            {option}
+            {opt}
           </button>
         ))}
       </div>

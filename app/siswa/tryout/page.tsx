@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { GraduationCap, Lock, PlayCircle, Target } from "lucide-react";
 import { tryoutPaket, tryoutUmptkinPaket } from "@/lib/app-data";
@@ -8,23 +9,42 @@ function PaketCard({ p, session }: { p: TryoutPaket; session: Awaited<ReturnType
   const hasAccess = canAccessTier(session?.tier ?? "free", p.akses);
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-base font-bold text-slate-900 leading-snug">{p.title}</h3>
-          <p className="mt-1 text-sm text-slate-500">{p.subtitle}</p>
-        </div>
-        {p.akses === "belajar_pro" ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase text-amber-900">
-            <Lock size={11} /> Belajar+
-          </span>
+    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md">
+      {/* Header: logo + title + badge akses */}
+      <div className="flex items-start gap-3">
+        {p.logoUrl ? (
+          <div className="shrink-0 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 p-1.5">
+            <Image
+              src={p.logoUrl}
+              alt={p.title}
+              width={36}
+              height={36}
+              className="h-full w-full object-contain"
+            />
+          </div>
         ) : (
-          <span className="inline-flex shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase text-emerald-800">
-            Gratis
-          </span>
+          <div className="shrink-0 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-slate-400">
+            <GraduationCap size={20} />
+          </div>
         )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-base font-bold text-slate-900 leading-snug">{p.title}</h3>
+            {p.akses === "belajar_pro" ? (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase text-amber-900">
+                <Lock size={11} /> Pro
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase text-emerald-800">
+                Gratis
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm text-slate-500 leading-snug">{p.subtitle}</p>
+        </div>
       </div>
 
+      {/* Stats */}
       <dl className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-600">
         <div className="rounded-xl bg-slate-50 p-3">
           <dt className="font-bold text-slate-500">Soal</dt>

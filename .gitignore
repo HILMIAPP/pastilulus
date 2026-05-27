@@ -49,3 +49,6 @@ tmp_docx_peek/
 # WhatsApp Baileys local auth/session files
 .baileys-auth/
 .baileys-store.json
+
+# Claude Code internal worktrees
+.claude/worktrees/
