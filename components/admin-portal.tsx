@@ -2629,7 +2629,7 @@ function PastiLulusTokenView({
 
   return (
     <div className="space-y-6">
-      <PageTitle title="PASTI LULUS 1 — Token Akses" description="Buat dan kelola kode token gratis untuk peserta PASTI LULUS 1 (27 paket tryout PDF)." />
+      <PageTitle title="PASTI LULUS 1 — Token Akses" description={`Buat dan kelola kode token gratis untuk peserta PASTI LULUS 1 (${PASTI_LULUS_ITEMS.length} paket tryout PDF).`} />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

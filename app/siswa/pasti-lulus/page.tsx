@@ -4,7 +4,7 @@ import { BookOpen, BookText, Download, ExternalLink, FileText, Star, Trophy } fr
 import { getCurrentSession } from "@/lib/session";
 import { checkPastiLulusAccessAction } from "@/lib/pasti-lulus-actions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PASTI_LULUS_ITEMS, INDEX_PDF_FILENAME } from "@/lib/pasti-lulus-data";
+import { ADDITIONAL_INDEX_PDF_FILENAMES, PASTI_LULUS_ITEMS, INDEX_PDF_FILENAME } from "@/lib/pasti-lulus-data";
 import { getSignedUrl } from "@/lib/pasti-lulus-storage";
 
 type MaterialRecord = {
@@ -74,6 +74,12 @@ export default async function PastiLulusPage() {
     fetchResolvedItems(),
     getSignedUrl(`original/${INDEX_PDF_FILENAME}`),
   ]);
+  const additionalIndexUrls = await Promise.all(
+    ADDITIONAL_INDEX_PDF_FILENAMES.map(async (filename) => ({
+      filename,
+      url: await getSignedUrl(`original/${filename}`),
+    })),
+  );
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -94,14 +100,24 @@ export default async function PastiLulusPage() {
         </p>
 
         {/* Index shortcut */}
-        {indexUrl && (
+        {(indexUrl || additionalIndexUrls.some((item) => item.url)) && (
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3">
             <Star size={16} className="text-yellow-600 shrink-0" />
             <span className="text-sm font-semibold text-yellow-800">Lihat daftar lengkap semua tryout:</span>
-            <a href={indexUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-yellow-700">
-              <FileText size={13} /> Buka Index PDF
-            </a>
+            <div className="flex flex-wrap gap-2">
+              {indexUrl && (
+                <a href={indexUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-yellow-700">
+                  <FileText size={13} /> Index Utama
+                </a>
+              )}
+              {additionalIndexUrls.map((item, index) => item.url && (
+                <a key={item.filename} href={item.url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-yellow-700">
+                  <FileText size={13} /> Index Tambahan {index + 1}
+                </a>
+              ))}
+            </div>
           </div>
         )}
       </div>

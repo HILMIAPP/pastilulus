@@ -1,4 +1,4 @@
-/** Daftar 27 item tryout PASTI LULUS 1.
+/** Daftar item tryout PASTI LULUS 1.
  *  Digunakan bersama oleh halaman siswa, admin portal, dan API routes.
  */
 
@@ -38,6 +38,22 @@ export const PASTI_LULUS_ITEMS: PastiLulusItem[] = [
   { nomor: "25", universitas: "Politeknik Negeri Sriwijaya (POLSRI)", jurusan: "Teknik Sipil", defaultSoalFilename: "25_tryout_politeknik-negeri-sriwijaya-polsri_teknik-sipil.pdf" },
   { nomor: "26", universitas: "Politeknik Negeri Sriwijaya (POLSRI)", jurusan: "Manajemen Bisnis", defaultSoalFilename: "26_tryout_politeknik-negeri-sriwijaya-polsri_manajemen-bisnis.pdf" },
   { nomor: "27", universitas: "Politeknik Perkapalan Negeri Surabaya (PPNS)", jurusan: "D4 Manajemen Bisnis", defaultSoalFilename: "27_tryout_politeknik-perkapalan-negeri-surabaya-ppns_d4-manajemen-bisnis.pdf" },
+  { nomor: "28", universitas: "Universitas Andalas (UNAND)", jurusan: "Kedokteran Gigi", defaultSoalFilename: "universitas_andalas_kedokteran_gigi.pdf" },
+  { nomor: "29", universitas: "Universitas Andalas (UNAND)", jurusan: "Kesehatan Masyarakat", defaultSoalFilename: "universitas_andalas_kesehatan_masyarakat.pdf" },
+  { nomor: "30", universitas: "Universitas Negeri Makassar (UNM)", jurusan: "Biologi", defaultSoalFilename: "universitas_negeri_makassar_biologi.pdf" },
+  { nomor: "31", universitas: "Universitas Negeri Makassar (UNM)", jurusan: "Paket Umum", defaultSoalFilename: "universitas_negeri_makassar_paket_umum.pdf" },
+  { nomor: "32", universitas: "Universitas Sriwijaya (UNSRI)", jurusan: "Kesehatan Lingkungan", defaultSoalFilename: "universitas_sriwijaya_kesehatan_lingkungan.pdf" },
+  { nomor: "33", universitas: "Universitas Sriwijaya (UNSRI)", jurusan: "Kesehatan Masyarakat", defaultSoalFilename: "universitas_sriwijaya_kesehatan_masyarakat.pdf" },
+  { nomor: "34", universitas: "Politeknik Negeri Batam", jurusan: "Paket UMPB", defaultSoalFilename: "politeknik_negeri_batam_paket_umpb.pdf" },
+  { nomor: "35", universitas: "Politeknik Negeri Bengkalis", jurusan: "Teknik Mesin Produksi dan Perawatan", defaultSoalFilename: "politeknik_negeri_bengkalis_teknik_mesin_produksi_dan_perawatan.pdf" },
+  { nomor: "36", universitas: "STIKes Karsa Husada", jurusan: "Keperawatan", defaultSoalFilename: "stikes_karsa_husada_keperawatan.pdf" },
+  { nomor: "37", universitas: "Universitas Andalas (UNAND)", jurusan: "Kedokteran", defaultSoalFilename: "UNAND_Kedokteran_Tryout_Pastilulus.pdf" },
+  { nomor: "38", universitas: "Universitas Sriwijaya (UNSRI)", jurusan: "Farmasi", defaultSoalFilename: "UNSRI_Farmasi_Tryout_Pastilulus.pdf" },
+  { nomor: "39", universitas: "Universitas Tadulako (UNTAD)", jurusan: "Ilmu Hukum", defaultSoalFilename: "UNTAD_Ilmu_Hukum_Tryout_Pastilulus.pdf" },
 ];
 
 export const INDEX_PDF_FILENAME = "00_INDEX_DAFTAR_TRYOUT.pdf";
+export const ADDITIONAL_INDEX_PDF_FILENAMES = [
+  "00_INDEX_DAFTAR_TRYOUT_TAMBAHAN.pdf",
+  "00_INDEX_DAFTAR_TRYOUT_BATCH2.pdf",
+] as const;
