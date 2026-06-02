@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    console.error("[auth/callback] exchangeCodeForSession error:", error.message);
     return NextResponse.redirect(new URL(`/masuk?error=${encodeURIComponent(error.message)}`, origin));
   }
 
@@ -31,11 +32,17 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
+    console.error("[auth/callback] getUser error:", userError?.message);
     return NextResponse.redirect(new URL("/masuk?error=Session Google tidak ditemukan.", origin));
   }
 
-  const session = await createAppSessionFromUser(user);
-  const destination = session.role === "student" ? next : "/admin";
-
-  return NextResponse.redirect(new URL(destination, origin));
+  try {
+    const session = await createAppSessionFromUser(user);
+    const destination = session.role === "student" ? next : "/admin";
+    return NextResponse.redirect(new URL(destination, origin));
+  } catch (err) {
+    console.error("[auth/callback] createAppSessionFromUser error:", err);
+    // Tetap redirect ke siswa walau session cookie gagal dibuat
+    return NextResponse.redirect(new URL("/siswa", origin));
+  }
 }
