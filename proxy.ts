@@ -64,6 +64,14 @@ async function checkRateLimit(key: string, requests: number, windowSeconds: numb
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const code = request.nextUrl.searchParams.get("code");
+
+  // Supabase OAuth sometimes redirects to Site URL (/) instead of /auth/callback.
+  if (pathname === "/" && code) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
 
   // Rate limiting for API routes.
   const rateLimit = matchRateLimit(pathname);
@@ -108,5 +116,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/siswa/:path*", "/admin/:path*", "/masuk", "/daftar", "/api/:path*"],
+  matcher: ["/", "/siswa/:path*", "/admin/:path*", "/masuk", "/daftar", "/api/:path*"],
 };
