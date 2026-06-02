@@ -1,9 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { GraduationCap, Lock, PlayCircle, Target } from "lucide-react";
+import { GraduationCap, Lock, PlayCircle, Target, Trophy } from "lucide-react";
 import { tryoutPaket, tryoutUmptkinPaket } from "@/lib/app-data";
 import type { TryoutPaket } from "@/lib/app-data";
 import { canAccessTier, getCurrentSession } from "@/lib/session";
+import { TryoutFreeGateButton } from "@/components/tryout-free-gate";
+import { checkPastiLulusAccessAction } from "@/lib/pasti-lulus-actions";
+import { PastiLulusCard } from "@/components/pasti-lulus-token-gate";
 
 function PaketCard({ p, session }: { p: TryoutPaket; session: Awaited<ReturnType<typeof getCurrentSession>> }) {
   const hasAccess = canAccessTier(session?.tier ?? "free", p.akses);
@@ -61,12 +64,19 @@ function PaketCard({ p, session }: { p: TryoutPaket; session: Awaited<ReturnType
 
       <div className="mt-5 flex flex-wrap gap-3">
         {hasAccess ? (
-          <Link
-            href={`/siswa/tryout/${p.slug}`}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 min-[420px]:flex-none"
-          >
-            <PlayCircle size={17} /> Mulai simulasi
-          </Link>
+          p.akses === "gratis" ? (
+            <TryoutFreeGateButton
+              href={`/siswa/tryout/${p.slug}`}
+              userName={session?.name}
+            />
+          ) : (
+            <Link
+              href={`/siswa/tryout/${p.slug}`}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 min-[420px]:flex-none"
+            >
+              <PlayCircle size={17} /> Mulai simulasi
+            </Link>
+          )
         ) : (
           <Link
             href="/siswa/langganan"
@@ -82,6 +92,7 @@ function PaketCard({ p, session }: { p: TryoutPaket; session: Awaited<ReturnType
 
 export default async function TryoutIndexPage() {
   const session = await getCurrentSession();
+  const hasPastiLulusAccess = await checkPastiLulusAccessAction();
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -136,6 +147,34 @@ export default async function TryoutIndexPage() {
 
       <div className="grid gap-5 md:grid-cols-2">
         {tryoutUmptkinPaket.map((p) => <PaketCard key={p.id} p={p} session={session} />)}
+      </div>
+
+      {/* ── DIVIDER ── */}
+      <div className="relative my-10">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-slate-50 px-4 text-xs font-black uppercase tracking-widest text-slate-400">atau</span>
+        </div>
+      </div>
+
+      {/* ── SECTION 3: PASTI LULUS 1 ── */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-100 text-yellow-700">
+          <Trophy size={18} />
+        </div>
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-yellow-600">Jalur 3 · Eksklusif</p>
+          <h2 className="text-xl font-black text-slate-900">PASTI LULUS 1 — Gratis dengan Token</h2>
+        </div>
+      </div>
+      <p className="mt-1 mb-6 max-w-2xl text-sm text-slate-500">
+        27 paket tryout spesifik universitas &amp; jurusan. Akses gratis — masukkan kode token yang diberikan admin untuk membuka semua materi.
+      </p>
+
+      <div className="max-w-md">
+        <PastiLulusCard hasAccess={hasPastiLulusAccess} />
       </div>
 
     </main>

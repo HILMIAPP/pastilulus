@@ -104,6 +104,45 @@ async function verifyMayarInvoiceStatus(providerPaymentId: string) {
   }
 }
 
+async function upsertSubscriptionCompat(
+  supabaseAdmin: NonNullable<ReturnType<typeof createAdminClient>>,
+  input: {
+    userId: string;
+    plan: "belajar" | "pro";
+    orderId: string;
+    amount: number;
+    periodStart: Date;
+    periodEnd: Date;
+  },
+) {
+  const payload = {
+    user_id: input.userId,
+    plan: input.plan,
+    status: "active",
+    provider_order_id: input.orderId,
+    midtrans_order_id: input.orderId,
+    amount: input.amount,
+    current_period_start: input.periodStart.toISOString(),
+    current_period_end: input.periodEnd.toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: existingSubscription, error: lookupError } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id")
+    .eq("provider_order_id", input.orderId)
+    .maybeSingle<{ id: string }>();
+  if (lookupError) return lookupError;
+
+  if (existingSubscription) {
+    const { error } = await supabaseAdmin.from("subscriptions").update(payload).eq("id", existingSubscription.id);
+    return error;
+  }
+
+  const { error } = await supabaseAdmin.from("subscriptions").insert(payload);
+  return error;
+}
+
 export async function POST(request: Request) {
   const expectedSecret = process.env.MAYAR_WEBHOOK_SECRET;
   const receivedSecret =
@@ -209,19 +248,17 @@ export async function POST(request: Request) {
       periodEnd.setMonth(periodEnd.getMonth() + 6);
     }
 
-    await supabaseAdmin.from("subscriptions").upsert(
-      {
-        user_id: transaction.user_id,
-        plan: transaction.plan,
-        status: "active",
-        provider_order_id: resolvedOrderId,
-        amount: transaction.amount,
-        current_period_start: periodStart.toISOString(),
-        current_period_end: periodEnd.toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "provider_order_id" },
-    );
+    const subscriptionError = await upsertSubscriptionCompat(supabaseAdmin, {
+      userId: transaction.user_id,
+      plan: transaction.plan,
+      orderId: resolvedOrderId,
+      amount: transaction.amount,
+      periodStart,
+      periodEnd,
+    });
+    if (subscriptionError) {
+      return Response.json({ received: false, message: `Subscription update failed: ${subscriptionError.message}` }, { status: 500 });
+    }
 
     const tierRank: Record<string, number> = { free: 0, belajar: 1, pro: 2 };
     const { data: currentProfile } = await supabaseAdmin

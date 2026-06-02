@@ -1,0 +1,51 @@
+# =============================================================================
+# .env untuk PRODUCTION di VPS
+# Simpan file ini sebagai /var/www/lolosujian/.env di VPS
+# JANGAN commit file .env asli ke git!
+# =============================================================================
+
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# White label
+NEXT_PUBLIC_BRAND_NAME=Pastilulus
+NEXT_PUBLIC_BRAND_OWNER=Nukaedu
+NEXT_PUBLIC_BRAND_SUFFIX=BY NUKAEDU
+NEXT_PUBLIC_BRAND_TAGLINE=Persiapan ujian mandiri PTN yang terarah: soal, simulasi, AI tutor, dan deadline.
+NEXT_PUBLIC_BRAND_PROMISE=Belajar pasti lulus, masa depan pasti cerah.
+NEXT_PUBLIC_CONTACT_EMAIL=halo@pastilulus.id
+NEXT_PUBLIC_WHATSAPP_GROUP_URL=https://wa.me/6285155072188
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
+NEXT_PUBLIC_BRAND_LOGO_WIDE=/assets/pastilulus-logo-wide-cropped.png
+NEXT_PUBLIC_BRAND_LOGO_ICON=/assets/pastilulus-logo-only.png
+NEXT_PUBLIC_STORAGE_PREFIX=pastilulus
+NEXT_PUBLIC_SESSION_COOKIE_NAME=pastilulus_session
+NEXT_PUBLIC_ADMIN_EMAIL=admin@pastilulus.id
+NEXT_PUBLIC_SUPER_ADMIN_EMAIL=superadmin@pastilulus.id
+
+# Pricing
+NEXT_PUBLIC_PLAN_BELAJAR_PRICE=29000
+NEXT_PUBLIC_PLAN_PRO_PRICE=49000
+
+# Mayar
+MAYAR_API_KEY=isi_api_key_mayar_anda
+MAYAR_BASE_URL=https://api.mayar.id/hl/v1
+MAYAR_WEBHOOK_SECRET=isi_webhook_secret_mayar
+MAYAR_DEFAULT_MOBILE=080000000000
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJxxx...
+SUPABASE_URL=https://xxxxxxxx.supabase.co
+SUPABASE_ANON_KEY=eyJxxx...
+SUPABASE_SERVICE_ROLE_KEY=eyJxxx...
+
+# AI
+GROQ_API_KEY=gsk_xxx...
+
+# Rate limiting (Upstash Redis)
+KV_REST_API_URL=https://xxx.upstash.io
+KV_REST_API_TOKEN=xxx...
+
+# Session secret — WAJIB minimal 32 karakter acak!
+# Generate: openssl rand -base64 32
+AUTH_SECRET=GANTI_DENGAN_STRING_RANDOM_MINIMAL_32_KARAKTER

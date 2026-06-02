@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Template Pembahasan – PASTI LULUS 1 | Lolosujian</title>
+  <style>
+    :root {
+      --blue: #2563eb;
+      --green: #16a34a;
+      --yellow: #f59e0b;
+      --red: #dc2626;
+      --border: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      color: #1e293b;
+      background: #fff;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { padding: 0; }
+      .page { margin: 0; border: none; box-shadow: none; }
+    }
+
+    @page {
+      size: A4;
+      margin: 20mm 18mm 20mm 25mm;
+    }
+
+    .screen-wrapper {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f1f5f9;
+    }
+
+    /* Print bar */
+    .print-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 16px; padding: 12px 16px;
+      background: #fff; border-radius: 12px; border: 1px solid #e2e8f0;
+      flex-wrap: wrap;
+    }
+    .print-bar h1 { font-size: 14px; font-weight: 800; color: #1e293b; font-family: Arial, sans-serif; }
+    .print-bar p { font-size: 11px; color: #64748b; font-family: Arial, sans-serif; }
+    .print-bar .actions { display: flex; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer; border: none;
+      font-family: Arial, sans-serif;
+    }
+    .btn-green { background: #16a34a; color: #fff; }
+    .btn-outline { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+
+    /* Page */
+    .page {
+      background: #fff; padding: 0;
+      margin-bottom: 16px; border-radius: 4px;
+      box-shadow: 0 1px 8px rgba(0,0,0,.08);
+    }
+
+    /* Header */
+    .header {
+      border-bottom: 3px solid var(--green);
+      padding: 14px 20px 10px;
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .header-logo {
+      width: 52px; height: 52px; flex-shrink: 0;
+      background: var(--green); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 900; font-size: 16px;
+      font-family: Arial, sans-serif;
+    }
+    .header-text { flex: 1; }
+    .brand-name {
+      font-family: Arial, sans-serif; font-size: 11pt; font-weight: 900;
+      color: var(--green); letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .doc-title { font-size: 16pt; font-weight: 900; color: #1e293b; margin-top: 1px; }
+    .header-badge {
+      background: #dcfce7; color: #14532d;
+      font-family: Arial, sans-serif; font-size: 9pt; font-weight: 900;
+      padding: 3px 10px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* Meta info */
+    .meta-box {
+      margin: 12px 20px; border: 1px solid var(--border);
+      border-radius: 6px; overflow: hidden;
+    }
+    .meta-box table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10pt; }
+    .meta-box td { padding: 6px 12px; border-bottom: 1px solid var(--border); }
+    .meta-box tr:last-child td { border-bottom: none; }
+    .meta-label { width: 36%; font-weight: 700; color: #475569; }
+    .meta-value { border-bottom: 1px dotted #94a3b8; min-width: 80px; }
+
+    /* Kunci summary */
+    .kunci-summary {
+      margin: 12px 20px;
+      border: 2px solid var(--green);
+      border-radius: 8px; overflow: hidden;
+    }
+    .kunci-summary-head {
+      background: var(--green); color: #fff;
+      font-family: Arial, sans-serif; font-size: 10pt; font-weight: 900;
+      padding: 6px 14px;
+    }
+    .kunci-grid {
+      display: grid; grid-template-columns: repeat(10, 1fr);
+      padding: 10px 14px; gap: 4px;
+    }
+    .kunci-cell {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .kunci-num {
+      font-family: Arial, sans-serif; font-size: 8pt; font-weight: 700;
+      color: #64748b;
+    }
+    .kunci-ans {
+      width: 28px; height: 28px;
+      border: 2px solid var(--green);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Arial, sans-serif; font-size: 10pt; font-weight: 900;
+      color: var(--green);
+    }
+
+    /* Section head */
+    .section-head {
+      margin: 14px 20px 8px;
+      background: #14532d;
+      color: #fff; font-family: Arial, sans-serif;
+      font-size: 10pt; font-weight: 900;
+      padding: 5px 14px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .section-head .section-range { font-size: 8.5pt; font-weight: 600; opacity: 0.8; }
+
+    /* Pembahasan block */
+    .pembahasan-block {
+      margin: 0 20px;
+      border-bottom: 1px solid #f1f5f9;
+      padding: 12px 0;
+      page-break-inside: avoid;
+    }
+    .pembahasan-block:last-of-type { border-bottom: none; }
+
+    .pb-header {
+      display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;
+    }
+    .pb-num {
+      flex-shrink: 0; width: 26px; height: 26px;
+      background: var(--green); color: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Arial, sans-serif; font-size: 9pt; font-weight: 900;
+    }
+    .pb-kunci {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .kunci-label {
+      font-family: Arial, sans-serif; font-size: 9pt; font-weight: 700;
+      color: #475569;
+    }
+    .kunci-box {
+      width: 28px; height: 28px;
+      border: 2px solid var(--green);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Arial, sans-serif; font-size: 11pt; font-weight: 900;
+      color: var(--green); background: #f0fdf4;
+    }
+    .tingkat-badge {
+      font-family: Arial, sans-serif; font-size: 8pt; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+    }
+    .mudah { background: #dcfce7; color: #14532d; }
+    .sedang { background: #fef9c3; color: #713f12; }
+    .hots { background: #fef2f2; color: #991b1b; }
+
+    /* Text areas */
+    .pembahasan-content {
+      padding-left: 36px;
+    }
+    .soal-ringkas {
+      font-size: 10pt; color: #475569;
+      background: #f8fafc; border-left: 3px solid #94a3b8;
+      padding: 6px 10px; margin-bottom: 8px;
+      border-radius: 0 4px 4px 0; font-style: italic;
+    }
+
+    .label-section {
+      font-family: Arial, sans-serif; font-size: 9pt; font-weight: 900;
+      color: #334155; text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .penjelasan-box {
+      min-height: 60px;
+      border: 1px dashed #94a3b8;
+      border-radius: 6px; padding: 8px 10px;
+      font-size: 11pt; line-height: 1.7;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+
+    .pembahasan-cols {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+
+    .mini-label {
+      font-family: Arial, sans-serif; font-size: 8pt; font-weight: 700;
+      color: #64748b; text-transform: uppercase; letter-spacing: 0.4px;
+      margin-bottom: 3px;
+    }
+    .mini-box {
+      border: 1px dashed #e2e8f0; border-radius: 6px;
+      padding: 6px 10px; min-height: 36px;
+      font-size: 10pt; background: #fafafa;
+    }
+    .mini-box.red-box { border-color: #fca5a5; background: #fff5f5; }
+    .mini-box.green-box { border-color: #6ee7b7; background: #f0fdf4; }
+
+    /* Page break */
+    .page-break { page-break-before: always; }
+
+    /* Footer */
+    .page-footer {
+      margin-top: 16px; border-top: 1px solid var(--border);
+      padding: 8px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: Arial, sans-serif; font-size: 8pt; color: #94a3b8;
+    }
+
+    /* Score table */
+    .score-table {
+      margin: 12px 20px; border: 1px solid var(--border);
+      border-radius: 6px; overflow: hidden; font-family: Arial, sans-serif;
+    }
+    .score-table table {
+      width: 100%; border-collapse: collapse; font-size: 10pt;
+    }
+    .score-table thead tr { background: #1e3a5f; color: #fff; }
+    .score-table th { padding: 7px 12px; font-weight: 900; text-align: left; }
+    .score-table td { padding: 7px 12px; border-top: 1px solid var(--border); }
+    .score-table tr:nth-child(even) td { background: #f8fafc; }
+    .score-table td.total { font-weight: 900; color: var(--green); }
+  </style>
+</head>
+<body>
+
+<div class="screen-wrapper">
+  <!-- Print bar -->
+  <div class="print-bar no-print">
+    <div>
+      <h1>Template Pembahasan – PASTI LULUS 1</h1>
+      <p>Isi kunci jawaban, penjelasan, dan cara penyelesaian untuk setiap soal. Lalu klik "Cetak / Export PDF".</p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="window.location.href='/templates/template-soal-pasti-lulus.html'">
+        ↗ Buka Template Soal
+      </button>
+      <button class="btn btn-green" onclick="window.print()">
+        🖨 Cetak / Export PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ PAGE 1 — KUNCI & METADATA ═══ -->
+  <div class="page" id="page1">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-logo">PB</div>
+      <div class="header-text">
+        <div class="brand-name">Lolosujian · PASTI LULUS 1</div>
+        <div class="doc-title">Pembahasan &amp; Kunci Jawaban</div>
+      </div>
+      <div class="header-badge">KUNCI JAWABAN</div>
+    </div>
+
+    <!-- Meta -->
+    <div class="meta-box">
+      <table>
+        <tr>
+          <td class="meta-label">Universitas / Institusi</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          <td class="meta-label">Kode Paket</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+        </tr>
+        <tr>
+          <td class="meta-label">Program Studi / Jurusan</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          <td class="meta-label">Dibuat oleh</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Kunci summary grid -->
+    <div class="kunci-summary">
+      <div class="kunci-summary-head">Rekap Kunci Jawaban (Isi lingkaran sesuai kunci)</div>
+      <div class="kunci-grid" id="kunci-grid">
+        <!-- Generated by script below -->
+      </div>
+    </div>
+
+    <script>
+      var grid = document.getElementById('kunci-grid');
+      for (var i = 1; i <= 30; i++) {
+        grid.innerHTML += '<div class="kunci-cell">'
+          + '<div class="kunci-num">' + i + '</div>'
+          + '<div class="kunci-ans">__</div>'
+          + '</div>';
+      }
+    </script>
+
+    <!-- Score table reference -->
+    <div class="score-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Subtes</th>
+            <th>Nomor Soal</th>
+            <th>Jml Soal</th>
+            <th>Skor Maks (Benar Semua)</th>
+            <th>Rata-rata Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>[Nama Subtes I]</td>
+            <td>1 – 10</td>
+            <td>10</td>
+            <td class="total">40</td>
+            <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          </tr>
+          <tr>
+            <td>[Nama Subtes II]</td>
+            <td>11 – 20</td>
+            <td>10</td>
+            <td class="total">40</td>
+            <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          </tr>
+          <tr>
+            <td>[Nama Subtes III]</td>
+            <td>21 – 30</td>
+            <td>10</td>
+            <td class="total">40</td>
+            <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          </tr>
+          <tr style="background:#f0fdf4">
+            <td colspan="2"><strong>Total</strong></td>
+            <td><strong>30</strong></td>
+            <td class="total"><strong>120</strong></td>
+            <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="page-footer">
+      <span>Lolosujian · PASTI LULUS 1 — Halaman 1 (Kunci &amp; Rekap)</span>
+      <span>© 2026 Lolosujian</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ PAGE 2 — PEMBAHASAN 1–10 ═══ -->
+  <div class="page page-break" id="page2">
+    <div class="header">
+      <div class="header-logo">PB</div>
+      <div class="header-text">
+        <div class="brand-name">Lolosujian · PASTI LULUS 1</div>
+        <div class="doc-title">Pembahasan — Soal No. 1–10</div>
+      </div>
+      <div class="header-badge">SUBTES I</div>
+    </div>
+
+    <div class="section-head">
+      <span>SUBTES I — [NAMA SUBTES]</span>
+      <span class="section-range">Soal No. 1 – 10</span>
+    </div>
+
+    <!-- Pembahasan 1 -->
+    <div class="pembahasan-block">
+      <div class="pb-header">
+        <div class="pb-num">1</div>
+        <div class="pb-kunci">
+          <span class="kunci-label">Kunci:</span>
+          <div class="kunci-box">__</div>
+          <span class="tingkat-badge mudah">MUDAH</span>
+        </div>
+      </div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Tulis ringkasan/pertanyaan soal No. 1 di sini — satu kalimat cukup]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">
+          [Tulis penjelasan lengkap jawaban benar di sini. Sertakan langkah-langkah penyelesaian, rumus yang digunakan, atau alasan pemilihan jawaban tersebut. Untuk soal hitungan, tuliskan langkah demi langkah.]
+        </div>
+        <div class="pembahasan-cols">
+          <div>
+            <div class="mini-label">Mengapa pilihan lain salah?</div>
+            <div class="mini-box red-box">[Penjelasan opsi salah — A, B, C, D, atau E]</div>
+          </div>
+          <div>
+            <div class="mini-label">Tips / Trik Cepat</div>
+            <div class="mini-box green-box">[Cara cepat mengerjakan soal ini di waktu ujian]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pembahasan 2 -->
+    <div class="pembahasan-block">
+      <div class="pb-header">
+        <div class="pb-num">2</div>
+        <div class="pb-kunci">
+          <span class="kunci-label">Kunci:</span>
+          <div class="kunci-box">__</div>
+          <span class="tingkat-badge sedang">SEDANG</span>
+        </div>
+      </div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 2]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan jawaban soal No. 2...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pembahasan 3 -->
+    <div class="pembahasan-block">
+      <div class="pb-header">
+        <div class="pb-num">3</div>
+        <div class="pb-kunci">
+          <span class="kunci-label">Kunci:</span>
+          <div class="kunci-box">__</div>
+          <span class="tingkat-badge hots">HOTS</span>
+        </div>
+      </div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 3]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan jawaban soal No. 3...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pembahasan 4–10 (compact) -->
+    <div class="pembahasan-block">
+      <div class="pb-header"><div class="pb-num">4</div><div class="pb-kunci"><span class="kunci-label">Kunci:</span><div class="kunci-box">__</div><span class="tingkat-badge mudah">MUDAH</span></div></div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 4]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan soal No. 4...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pembahasan-block">
+      <div class="pb-header"><div class="pb-num">5</div><div class="pb-kunci"><span class="kunci-label">Kunci:</span><div class="kunci-box">__</div><span class="tingkat-badge sedang">SEDANG</span></div></div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 5]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan soal No. 5...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pembahasan-block">
+      <div class="pb-header"><div class="pb-num">6</div><div class="pb-kunci"><span class="kunci-label">Kunci:</span><div class="kunci-box">__</div><span class="tingkat-badge sedang">SEDANG</span></div></div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 6]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan soal No. 6...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pembahasan-block">
+      <div class="pb-header"><div class="pb-num">7</div><div class="pb-kunci"><span class="kunci-label">Kunci:</span><div class="kunci-box">__</div><span class="tingkat-badge hots">HOTS</span></div></div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 7]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan soal No. 7...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pembahasan-block">
+      <div class="pb-header"><div class="pb-num">8</div><div class="pb-kunci"><span class="kunci-label">Kunci:</span><div class="kunci-box">__</div><span class="tingkat-badge mudah">MUDAH</span></div></div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 8]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan soal No. 8...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pembahasan-block">
+      <div class="pb-header"><div class="pb-num">9</div><div class="pb-kunci"><span class="kunci-label">Kunci:</span><div class="kunci-box">__</div><span class="tingkat-badge sedang">SEDANG</span></div></div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 9]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan soal No. 9...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pembahasan-block">
+      <div class="pb-header"><div class="pb-num">10</div><div class="pb-kunci"><span class="kunci-label">Kunci:</span><div class="kunci-box">__</div><span class="tingkat-badge hots">HOTS</span></div></div>
+      <div class="pembahasan-content">
+        <div class="soal-ringkas">[Ringkasan soal No. 10]</div>
+        <div class="label-section">Pembahasan</div>
+        <div class="penjelasan-box">[Penjelasan soal No. 10...]</div>
+        <div class="pembahasan-cols">
+          <div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>
+          <div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>Lolosujian · PASTI LULUS 1 — Halaman 2 (Pembahasan 1–10)</span>
+      <span>© 2026 Lolosujian</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ PAGE 3 — PEMBAHASAN 11–20 ═══ -->
+  <div class="page page-break" id="page3">
+    <div class="header">
+      <div class="header-logo">PB</div>
+      <div class="header-text">
+        <div class="brand-name">Lolosujian · PASTI LULUS 1</div>
+        <div class="doc-title">Pembahasan — Soal No. 11–20</div>
+      </div>
+      <div class="header-badge">SUBTES II</div>
+    </div>
+
+    <div class="section-head">
+      <span>SUBTES II — [NAMA SUBTES]</span>
+      <span class="section-range">Soal No. 11 – 20</span>
+    </div>
+
+    <!-- 11–20 same structure -->
+    <script>
+      for (var i = 11; i <= 20; i++) {
+        var tingkat = i % 3 === 0 ? 'hots" style="background:#fef2f2;color:#991b1b' : (i % 2 === 0 ? 'sedang" style="background:#fef9c3;color:#713f12' : 'mudah" style="background:#dcfce7;color:#14532d');
+        var tingkatLabel = i % 3 === 0 ? 'HOTS' : (i % 2 === 0 ? 'SEDANG' : 'MUDAH');
+        document.write('<div class="pembahasan-block">'
+          + '<div class="pb-header">'
+          + '<div class="pb-num">' + i + '</div>'
+          + '<div class="pb-kunci">'
+          + '<span class="kunci-label">Kunci:</span>'
+          + '<div class="kunci-box">__</div>'
+          + '<span class="tingkat-badge ' + tingkat + '">' + tingkatLabel + '</span>'
+          + '</div></div>'
+          + '<div class="pembahasan-content">'
+          + '<div class="soal-ringkas">[Ringkasan soal No. ' + i + ']</div>'
+          + '<div class="label-section">Pembahasan</div>'
+          + '<div class="penjelasan-box">[Penjelasan soal No. ' + i + '...]</div>'
+          + '<div class="pembahasan-cols">'
+          + '<div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>'
+          + '<div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>'
+          + '</div></div></div>');
+      }
+    </script>
+
+    <div class="page-footer">
+      <span>Lolosujian · PASTI LULUS 1 — Halaman 3 (Pembahasan 11–20)</span>
+      <span>© 2026 Lolosujian</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ PAGE 4 — PEMBAHASAN 21–30 ═══ -->
+  <div class="page page-break" id="page4">
+    <div class="header">
+      <div class="header-logo">PB</div>
+      <div class="header-text">
+        <div class="brand-name">Lolosujian · PASTI LULUS 1</div>
+        <div class="doc-title">Pembahasan — Soal No. 21–30</div>
+      </div>
+      <div class="header-badge">SUBTES III</div>
+    </div>
+
+    <div class="section-head">
+      <span>SUBTES III — [NAMA SUBTES]</span>
+      <span class="section-range">Soal No. 21 – 30</span>
+    </div>
+
+    <script>
+      for (var j = 21; j <= 30; j++) {
+        var tgk = j % 3 === 0 ? 'hots" style="background:#fef2f2;color:#991b1b' : (j % 2 === 0 ? 'sedang" style="background:#fef9c3;color:#713f12' : 'mudah" style="background:#dcfce7;color:#14532d');
+        var tgkL = j % 3 === 0 ? 'HOTS' : (j % 2 === 0 ? 'SEDANG' : 'MUDAH');
+        document.write('<div class="pembahasan-block">'
+          + '<div class="pb-header">'
+          + '<div class="pb-num">' + j + '</div>'
+          + '<div class="pb-kunci">'
+          + '<span class="kunci-label">Kunci:</span>'
+          + '<div class="kunci-box">__</div>'
+          + '<span class="tingkat-badge ' + tgk + '">' + tgkL + '</span>'
+          + '</div></div>'
+          + '<div class="pembahasan-content">'
+          + '<div class="soal-ringkas">[Ringkasan soal No. ' + j + ']</div>'
+          + '<div class="label-section">Pembahasan</div>'
+          + '<div class="penjelasan-box">[Penjelasan soal No. ' + j + '...]</div>'
+          + '<div class="pembahasan-cols">'
+          + '<div><div class="mini-label">Mengapa pilihan lain salah?</div><div class="mini-box red-box">[...]</div></div>'
+          + '<div><div class="mini-label">Tips / Trik Cepat</div><div class="mini-box green-box">[...]</div></div>'
+          + '</div></div></div>');
+      }
+    </script>
+
+    <!-- Closing notes -->
+    <div style="margin: 16px 20px; padding: 12px 16px; background: #f0fdf4; border: 1px solid #6ee7b7; border-radius: 8px;">
+      <p style="font-family: Arial, sans-serif; font-size: 10pt; font-weight: 900; color: #14532d; margin-bottom: 4px;">
+        Catatan Pengembang Soal
+      </p>
+      <div style="min-height: 40px; font-size: 10pt; color: #166534; line-height: 1.6;">
+        [Tulis catatan tambahan, sumber referensi soal, atau rekomendasi belajar di sini]
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>Lolosujian · PASTI LULUS 1 — Halaman 4 (Terakhir · Pembahasan 21–30)</span>
+      <span>© 2026 Lolosujian · Dokumen internal tim akademik</span>
+    </div>
+  </div>
+
+</div><!-- /screen-wrapper -->
+</body>
+</html>

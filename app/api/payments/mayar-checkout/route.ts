@@ -140,12 +140,40 @@ export async function POST(request: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? site.url;
   const statusUrl = `${appUrl}/pembayaran/status?status=pending&order_id=${encodeURIComponent(orderId)}`;
 
+  async function ensureProfile() {
+    if (!supabaseAdmin) return null;
+
+    const { data: existingProfile, error: lookupError } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", currentSession.userId)
+      .maybeSingle<{ id: string }>();
+    if (lookupError) return lookupError;
+    if (existingProfile) {
+      const { error } = await supabaseAdmin
+        .from("profiles")
+        .update({ full_name: currentSession.name, email: currentSession.email, updated_at: new Date().toISOString() })
+        .eq("id", currentSession.userId);
+      return error;
+    }
+
+    const { error } = await supabaseAdmin.from("profiles").insert({
+      id: currentSession.userId,
+      full_name: currentSession.name,
+      email: currentSession.email,
+      role: "student",
+      tier: currentSession.tier ?? "free",
+      updated_at: new Date().toISOString(),
+    });
+    return error;
+  }
+
   async function recordTransaction(
     status: "pending" | "failed",
     provider?: { paymentId?: string; transactionId?: string; paymentUrl?: string; responsePayload?: MayarCreateInvoiceResponse },
   ) {
-    if (!supabaseAdmin) return;
-    await supabaseAdmin.from("payment_transactions").upsert(
+    if (!supabaseAdmin) return null;
+    const { error } = await supabaseAdmin.from("payment_transactions").upsert(
       {
         order_id: orderId,
         user_id: currentSession.userId,
@@ -172,10 +200,19 @@ export async function POST(request: Request) {
       },
       { onConflict: "order_id" },
     );
+    return error;
+  }
+
+  if (supabaseAdmin) {
+    const profileError = await ensureProfile();
+    if (profileError) {
+      return Response.json({ message: `Gagal menyiapkan profile pembayaran: ${profileError.message}` }, { status: 500 });
+    }
   }
 
   if (!process.env.MAYAR_API_KEY) {
-    await recordTransaction("pending");
+    const recordError = await recordTransaction("pending");
+    if (recordError) return Response.json({ message: `Gagal mencatat transaksi: ${recordError.message}` }, { status: 500 });
     return Response.json({
       mode: "development",
       orderId,
@@ -191,6 +228,11 @@ export async function POST(request: Request) {
 
   const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const description = `Paket ${plan.name} ${site.name}${discountAmount > 0 ? " Promo" : ""}`;
+  const initialRecordError = await recordTransaction("pending");
+  if (initialRecordError) {
+    return Response.json({ message: `Gagal mencatat transaksi sebelum checkout Mayar: ${initialRecordError.message}` }, { status: 500 });
+  }
+
   const response = await fetch(`${getMayarBaseUrl()}/invoice/create`, {
     method: "POST",
     headers: {
@@ -244,12 +286,15 @@ export async function POST(request: Request) {
     );
   }
 
-  await recordTransaction("pending", {
+  const providerRecordError = await recordTransaction("pending", {
     paymentId: mayarData.id,
     transactionId: mayarData.transactionId,
     paymentUrl: mayarData.link,
     responsePayload: mayar,
   });
+  if (providerRecordError) {
+    return Response.json({ message: `Invoice Mayar dibuat, tetapi gagal menyimpan provider ID: ${providerRecordError.message}` }, { status: 500 });
+  }
 
   return Response.json({
     mode: "mayar-checkout",

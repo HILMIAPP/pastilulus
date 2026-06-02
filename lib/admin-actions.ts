@@ -490,3 +490,33 @@ export async function updateBlogPostAction(input: {
   revalidatePath("/admin");
   return { ok: true };
 }
+
+export async function updateUserTierAction(userId: string, tier: "free" | "belajar" | "pro") {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ tier, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function updateRegistrationStatusAction(id: string, status: "verified" | "rejected") {
+  await assertAdmin();
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
+
+  const { error } = await supabase
+    .from("tryout_registrations")
+    .update({ status })
+    .eq("id", id);
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}

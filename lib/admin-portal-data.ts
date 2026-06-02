@@ -44,11 +44,37 @@ export type AdminPortalData = {
     email: string;
     plan: string;
     amount: string;
+    amountRaw: number;
     method: string;
     status: "paid" | "pending" | "expired" | "failed";
     promoCode: string;
     affiliateCode: string;
     paidAt: string;
+    createdAt: string;
+  }>;
+  registrations: Array<{
+    id: string;
+    userId: string | null;
+    email: string | null;
+    nama: string;
+    whatsapp: string;
+    sekolah: string;
+    kelas: string;
+    jurusan: string;
+    kartuUrl: string | null;
+    status: "pending" | "verified" | "rejected";
+    registeredAt: string;
+  }>;
+  uploadedPakets: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    subtitle: string;
+    soalCount: number;
+    durasiMenit: number;
+    akses: "gratis" | "belajar_pro";
+    scoringType: "classical" | "irt";
+    uploadedBy: string | null;
     createdAt: string;
   }>;
   promos: Array<{
@@ -89,6 +115,23 @@ export type AdminPortalData = {
   }>;
   ptns: AdminPtn[];
   broadcasts: AdminBroadcast[];
+  pastiLulusTokens: Array<{
+    id: string;
+    token: string;
+    note: string | null;
+    redeemedBy: string | null;
+    redeemedAt: string | null;
+    isActive: boolean;
+    createdAt: string;
+  }>;
+  pastiLulusMaterials: Array<{
+    nomor: string;
+    universitas: string;
+    jurusan: string;
+    soalFilename: string | null;
+    pembahasanFilename: string | null;
+    updatedAt: string;
+  }>;
   crmConversations: Array<{
     id: string;
     channel: "website" | "whatsapp";
@@ -146,19 +189,18 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
     supabase.from("blog_posts").select("id,title,category,status,updated_at").order("updated_at", { ascending: false }).limit(100),
     supabase.from("site_content").select("id,section_key,title,status,owner,content,updated_at").order("updated_at", { ascending: false }).limit(100),
     supabase.from("exam_sessions").select("user_id,score").eq("status", "submitted").limit(1000),
-    supabase
-      .from("crm_conversations")
-      .select("id,visitor_name,visitor_email,visitor_phone,source_page,topic,status,last_message_at")
-      .order("last_message_at", { ascending: false })
-      .limit(100),
-    supabase
-      .from("crm_messages")
-      .select("id,conversation_id,sender_type,body,created_at")
-      .order("created_at", { ascending: true })
-      .limit(1000),
+    supabase.from("crm_conversations").select("id,visitor_name,visitor_email,visitor_phone,source_page,topic,status,last_message_at").order("last_message_at", { ascending: false }).limit(100),
+    supabase.from("crm_messages").select("id,conversation_id,sender_type,body,created_at").order("created_at", { ascending: true }).limit(1000),
     supabase.from("ptns").select("id,name,city,official_url").order("name", { ascending: true }),
     supabase.from("ptn_deadlines").select("id,ptn_id,title,open_at,close_at,source_url").order("close_at", { ascending: true }),
     supabase.from("broadcast_messages").select("id,target,title,body,status,sent_at").order("sent_at", { ascending: false }).limit(50),
+  ]);
+
+  const [registrations, uploadedPakets, pastiLulusTokensData, pastiLulusMaterialsData] = await Promise.all([
+    supabase.from("tryout_registrations").select("id,user_id,email,nama,whatsapp,sekolah,kelas,jurusan,kartu_url,status,registered_at").order("registered_at", { ascending: false }).limit(200),
+    supabase.from("question_bank_uploads").select("id,paket_id,paket_title,paket_subtitle,soal_count,durasi_menit,akses,scoring_type,uploaded_by,created_at").order("created_at", { ascending: false }).limit(100),
+    supabase.from("pasti_lulus_tokens").select("id,token,note,redeemed_by,redeemed_at,is_active,created_at").order("created_at", { ascending: false }).limit(500),
+    supabase.from("pasti_lulus_materials").select("nomor,universitas,jurusan,soal_filename,pembahasan_filename,updated_at").order("nomor", { ascending: true }),
   ]);
 
   const scoreByUser = new Map<string, { count: number; total: number }>();
@@ -207,6 +249,7 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
       email: trx.customer_email ?? "-",
       plan: trx.plan ?? "-",
       amount: formatIdr(trx.amount),
+      amountRaw: Number(trx.amount ?? 0),
       method: trx.payment_method ?? "-",
       status: trx.status,
       promoCode: trx.promo_code ?? "-",
@@ -284,6 +327,48 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
       status: conversation.status ?? "waiting_admin",
       lastMessageAt: formatDate(conversation.last_message_at),
       messages: messagesByConversation.get(conversation.id) ?? [],
+    })),
+    registrations: (registrations.data ?? []).map((r) => ({
+      id: r.id,
+      userId: r.user_id ?? null,
+      email: r.email ?? null,
+      nama: r.nama ?? "-",
+      whatsapp: r.whatsapp ?? "-",
+      sekolah: r.sekolah ?? "-",
+      kelas: r.kelas ?? "-",
+      jurusan: r.jurusan ?? "-",
+      kartuUrl: r.kartu_url ?? null,
+      status: (r.status ?? "pending") as "pending" | "verified" | "rejected",
+      registeredAt: formatDate(r.registered_at),
+    })),
+    pastiLulusMaterials: (pastiLulusMaterialsData.data ?? []).map((m) => ({
+      nomor: m.nomor,
+      universitas: m.universitas,
+      jurusan: m.jurusan,
+      soalFilename: m.soal_filename ?? null,
+      pembahasanFilename: m.pembahasan_filename ?? null,
+      updatedAt: formatDate(m.updated_at),
+    })),
+    pastiLulusTokens: (pastiLulusTokensData.data ?? []).map((t) => ({
+      id: t.id,
+      token: t.token,
+      note: t.note ?? null,
+      redeemedBy: t.redeemed_by ?? null,
+      redeemedAt: t.redeemed_at ? formatDate(t.redeemed_at) : null,
+      isActive: t.is_active ?? true,
+      createdAt: formatDate(t.created_at),
+    })),
+    uploadedPakets: (uploadedPakets.data ?? []).map((p) => ({
+      id: p.id,
+      slug: p.paket_id,
+      title: p.paket_title ?? "-",
+      subtitle: p.paket_subtitle ?? "",
+      soalCount: p.soal_count ?? 0,
+      durasiMenit: p.durasi_menit ?? 120,
+      akses: (p.akses ?? "belajar_pro") as "gratis" | "belajar_pro",
+      scoringType: (p.scoring_type ?? "classical") as "classical" | "irt",
+      uploadedBy: p.uploaded_by ?? null,
+      createdAt: formatDate(p.created_at),
     })),
   };
 }

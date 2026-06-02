@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
-import { signUpAction, signInWithGoogleAction } from "@/lib/auth-actions";
 import { BrandLogo } from "@/components/brand-logo";
 import { useSearchParams } from "next/navigation";
 
@@ -39,25 +38,11 @@ function DaftarForm() {
 
   const [showPass, setShowPass] = useState(false);
   const [password, setPassword] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const [isGooglePending, startGoogleTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const [isGooglePending, setIsGooglePending] = useState(false);
 
   const strength = passwordStrength(password);
   const busy = isPending || isGooglePending;
-
-  function handleSubmit(e: { preventDefault(): void; currentTarget: HTMLFormElement }) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    startTransition(async () => {
-      await signUpAction(new FormData(form));
-    });
-  }
-
-  function handleGoogle() {
-    startGoogleTransition(async () => {
-      await signInWithGoogleAction();
-    });
-  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12">
@@ -93,15 +78,14 @@ function DaftarForm() {
         )}
 
         {/* Google — primary CTA */}
-        <button
-          type="button"
-          onClick={handleGoogle}
-          disabled={busy}
+        <Link
+          href="/api/auth/google"
+          onClick={() => setIsGooglePending(true)}
           className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
         >
           {isGooglePending ? <Loader2 size={16} className="animate-spin" /> : <GoogleIcon />}
           {isGooglePending ? "Menghubungkan…" : "Daftar dengan Google"}
-        </button>
+        </Link>
 
         {/* Divider */}
         <div className="my-5 flex items-center gap-3">
@@ -111,7 +95,7 @@ function DaftarForm() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form action="/api/auth/signup" method="post" onSubmit={() => setIsPending(true)} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-xs font-bold text-slate-700">
               Nama lengkap
@@ -124,7 +108,7 @@ function DaftarForm() {
               autoFocus
               autoComplete="name"
               placeholder="Nama kamu"
-              disabled={busy}
+              readOnly={busy}
               className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A66FF] focus:bg-white focus:ring-4 focus:ring-[#0A66FF]/10 disabled:opacity-60"
             />
           </div>
@@ -140,7 +124,7 @@ function DaftarForm() {
               required
               autoComplete="email"
               placeholder="kamu@email.com"
-              disabled={busy}
+              readOnly={busy}
               className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A66FF] focus:bg-white focus:ring-4 focus:ring-[#0A66FF]/10 disabled:opacity-60"
             />
           </div>
@@ -160,7 +144,7 @@ function DaftarForm() {
                 placeholder="Minimal 8 karakter"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={busy}
+                readOnly={busy}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none transition focus:border-[#0A66FF] focus:bg-white focus:ring-4 focus:ring-[#0A66FF]/10 disabled:opacity-60"
               />
               <button

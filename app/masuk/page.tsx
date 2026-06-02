@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { signInAction, signInWithGoogleAction } from "@/lib/auth-actions";
 import { BrandLogo } from "@/components/brand-logo";
 import { useSearchParams } from "next/navigation";
 
@@ -24,22 +23,8 @@ function MasukForm() {
   const message = searchParams.get("message");
 
   const [showPass, setShowPass] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [isGooglePending, startGoogleTransition] = useTransition();
-
-  function handleSubmit(e: { preventDefault(): void; currentTarget: HTMLFormElement }) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    startTransition(async () => {
-      await signInAction(new FormData(form));
-    });
-  }
-
-  function handleGoogle() {
-    startGoogleTransition(async () => {
-      await signInWithGoogleAction();
-    });
-  }
+  const [isPending, setIsPending] = useState(false);
+  const [isGooglePending, setIsGooglePending] = useState(false);
 
   const busy = isPending || isGooglePending;
 
@@ -73,15 +58,14 @@ function MasukForm() {
         )}
 
         {/* Google — primary CTA */}
-        <button
-          type="button"
-          onClick={handleGoogle}
-          disabled={busy}
+        <Link
+          href="/api/auth/google"
+          onClick={() => setIsGooglePending(true)}
           className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
         >
           {isGooglePending ? <Loader2 size={16} className="animate-spin" /> : <GoogleIcon />}
           {isGooglePending ? "Menghubungkan…" : "Lanjutkan dengan Google"}
-        </button>
+        </Link>
 
         {/* Divider */}
         <div className="my-5 flex items-center gap-3">
@@ -91,7 +75,7 @@ function MasukForm() {
         </div>
 
         {/* Email form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form action="/api/auth/signin" method="post" onSubmit={() => setIsPending(true)} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-xs font-bold text-slate-700">
               Email
@@ -104,7 +88,7 @@ function MasukForm() {
               autoFocus
               autoComplete="email"
               placeholder="kamu@email.com"
-              disabled={busy}
+              readOnly={busy}
               className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A66FF] focus:bg-white focus:ring-4 focus:ring-[#0A66FF]/10 disabled:opacity-60"
             />
           </div>
@@ -127,7 +111,7 @@ function MasukForm() {
                 minLength={8}
                 autoComplete="current-password"
                 placeholder="Minimal 8 karakter"
-                disabled={busy}
+                readOnly={busy}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-10 text-sm text-slate-900 outline-none transition focus:border-[#0A66FF] focus:bg-white focus:ring-4 focus:ring-[#0A66FF]/10 disabled:opacity-60"
               />
               <button

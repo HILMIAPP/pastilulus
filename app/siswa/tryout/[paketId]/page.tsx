@@ -1,17 +1,20 @@
 import { notFound, redirect } from "next/navigation";
 import { TryoutExam } from "@/components/tryout-exam";
-import { tryoutPaket } from "@/lib/app-data";
+import { tryoutPaket, tryoutUmptkinPaket } from "@/lib/app-data";
 import { canAccessTier, getCurrentSession } from "@/lib/session";
 
 type Props = { params: Promise<{ paketId: string }> };
 
+// Semua paket yang bisa diakses via URL ini (PTN + PTKIN)
+const allPaket = [...tryoutPaket, ...tryoutUmptkinPaket];
+
 export async function generateStaticParams() {
-  return tryoutPaket.map((p) => ({ paketId: p.slug }));
+  return allPaket.map((p) => ({ paketId: p.slug }));
 }
 
 export default async function TryoutPaketPage({ params }: Props) {
   const { paketId } = await params;
-  const paket = tryoutPaket.find((p) => p.slug === paketId);
+  const paket = allPaket.find((p) => p.slug === paketId);
   if (!paket) notFound();
 
   const session = await getCurrentSession();

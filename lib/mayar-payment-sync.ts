@@ -127,6 +127,45 @@ async function fetchMayarInvoiceByOrderId(orderId: string) {
   return null;
 }
 
+async function upsertSubscriptionCompat(
+  supabaseAdmin: NonNullable<ReturnType<typeof createAdminClient>>,
+  input: {
+    userId: string;
+    plan: "belajar" | "pro";
+    orderId: string;
+    amount: number;
+    periodStart: Date;
+    periodEnd: Date;
+  },
+) {
+  const payload = {
+    user_id: input.userId,
+    plan: input.plan,
+    status: "active",
+    provider_order_id: input.orderId,
+    midtrans_order_id: input.orderId,
+    amount: input.amount,
+    current_period_start: input.periodStart.toISOString(),
+    current_period_end: input.periodEnd.toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: existingSubscription, error: lookupError } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id")
+    .eq("provider_order_id", input.orderId)
+    .maybeSingle<{ id: string }>();
+  if (lookupError) return lookupError;
+
+  if (existingSubscription) {
+    const { error } = await supabaseAdmin.from("subscriptions").update(payload).eq("id", existingSubscription.id);
+    return error;
+  }
+
+  const { error } = await supabaseAdmin.from("subscriptions").insert(payload);
+  return error;
+}
+
 async function applyPaidSideEffects(transaction: PaymentTransactionForSync) {
   const supabaseAdmin = createAdminClient();
   if (!supabaseAdmin || transaction.status === "paid") return;
@@ -155,19 +194,15 @@ async function applyPaidSideEffects(transaction: PaymentTransactionForSync) {
     periodEnd.setMonth(periodEnd.getMonth() + 6);
   }
 
-  await supabaseAdmin.from("subscriptions").upsert(
-    {
-      user_id: transaction.user_id,
-      plan: transaction.plan,
-      status: "active",
-      provider_order_id: transaction.order_id,
-      amount: transaction.amount,
-      current_period_start: periodStart.toISOString(),
-      current_period_end: periodEnd.toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "provider_order_id" },
-  );
+  const subscriptionError = await upsertSubscriptionCompat(supabaseAdmin, {
+    userId: transaction.user_id,
+    plan: transaction.plan,
+    orderId: transaction.order_id,
+    amount: transaction.amount,
+    periodStart,
+    periodEnd,
+  });
+  if (subscriptionError) return;
 
   const tierRank: Record<string, number> = { free: 0, belajar: 1, pro: 2 };
   const { data: currentProfile } = await supabaseAdmin

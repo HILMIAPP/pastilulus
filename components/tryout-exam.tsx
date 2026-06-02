@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { TryoutPaket, TryoutQuestion } from "@/lib/app-data";
-import { soalPaket1, soalPaketById } from "@/lib/app-data";
 import { computeScore, readAttempts, incrementAttempts, MAX_ATTEMPTS } from "@/lib/tryout-scoring";
 import type { ScoreResult } from "@/lib/tryout-scoring";
 import { calculateRationalization } from "@/lib/um-rationalization";
@@ -299,7 +298,30 @@ function AttemptsBlocked({ paket }: { paket: TryoutPaket }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function TryoutExam({ paket }: Props) {
-  const soalList = useMemo(() => soalPaketById[paket.id] ?? soalPaket1, [paket.id]);
+  // ── Soal: dimuat dari API (bukan static import) ────────────────────────────
+  const [soalList, setSoalList] = useState<TryoutQuestion[]>([]);
+  const [soalStatus, setSoalStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [soalErrorMsg, setSoalErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSoalStatus("loading");
+    setSoalErrorMsg(null);
+    fetch(`/api/tryout/questions/${paket.slug}`)
+      .then(async (res) => {
+        const data = await res.json() as { soal?: TryoutQuestion[]; error?: string };
+        if (!res.ok || data.error) {
+          setSoalErrorMsg(data.error ?? "Gagal memuat soal.");
+          setSoalStatus("error");
+        } else {
+          setSoalList(data.soal ?? []);
+          setSoalStatus("ready");
+        }
+      })
+      .catch(() => {
+        setSoalErrorMsg("Gagal terhubung ke server. Coba refresh halaman.");
+        setSoalStatus("error");
+      });
+  }, [paket.slug]);
 
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Choice | null>>({});
@@ -396,8 +418,41 @@ export function TryoutExam({ paket }: Props) {
     [score],
   );
 
-  // ── Guard: soal kosong ──────────────────────────────────────────────────────
-  if (!current) {
+  // ── Guard: sedang memuat soal ───────────────────────────────────────────────
+  if (soalStatus === "loading") {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+          <p className="mt-4 text-sm font-semibold text-slate-600">Memuat soal...</p>
+          <p className="mt-1 text-xs text-slate-400">{paket.soalCount} soal · {paket.durasiMenit} menit</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Guard: gagal memuat soal ────────────────────────────────────────────────
+  if (soalStatus === "error") {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center">
+          <p className="text-4xl">⚠️</p>
+          <h1 className="mt-4 text-lg font-black text-rose-950">Soal tidak dapat dimuat</h1>
+          <p className="mt-2 text-sm leading-relaxed text-rose-800">{soalErrorMsg}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-bold text-white hover:bg-rose-700"
+          >
+            Coba lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Guard: soal kosong (ready tapi array kosong) ────────────────────────────
+  if (soalStatus === "ready" && soalList.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12">
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950">

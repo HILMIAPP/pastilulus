@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Template Soal – PASTI LULUS 1 | Lolosujian</title>
+  <style>
+    :root {
+      --blue: #2563eb;
+      --yellow: #f59e0b;
+      --green: #16a34a;
+      --gray: #64748b;
+      --light: #f8fafc;
+      --border: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      color: #1e293b;
+      background: #fff;
+      padding: 0;
+    }
+
+    /* ── Print setup ── */
+    @media print {
+      .no-print { display: none !important; }
+      body { padding: 0; }
+      .page { margin: 0; border: none; box-shadow: none; }
+    }
+
+    @page {
+      size: A4;
+      margin: 20mm 18mm 20mm 25mm;
+    }
+
+    /* ── Screen wrapper ── */
+    .screen-wrapper {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f1f5f9;
+    }
+
+    /* ── Print controls bar ── */
+    .print-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      flex-wrap: wrap;
+    }
+    .print-bar h1 { font-size: 14px; font-weight: 800; color: #1e293b; font-family: Arial, sans-serif; }
+    .print-bar p { font-size: 11px; color: #64748b; font-family: Arial, sans-serif; }
+    .print-bar .actions { display: flex; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      border: none; font-family: Arial, sans-serif;
+    }
+    .btn-blue { background: #2563eb; color: #fff; }
+    .btn-outline { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+    .btn:hover { opacity: 0.9; }
+
+    /* ── Page ── */
+    .page {
+      background: #fff;
+      padding: 0;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      box-shadow: 0 1px 8px rgba(0,0,0,.08);
+    }
+
+    /* ── Header ── */
+    .header {
+      border-bottom: 3px solid var(--blue);
+      padding: 14px 20px 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .header-logo {
+      width: 52px; height: 52px; flex-shrink: 0;
+      background: var(--blue);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 900; font-size: 16px;
+      font-family: Arial, sans-serif;
+    }
+    .header-text { flex: 1; }
+    .brand-name {
+      font-family: Arial, sans-serif;
+      font-size: 11pt; font-weight: 900; color: var(--blue);
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .doc-title {
+      font-size: 16pt; font-weight: 900; color: #1e293b;
+      margin-top: 1px;
+    }
+    .header-badge {
+      background: var(--yellow);
+      color: #7c2d12;
+      font-family: Arial, sans-serif;
+      font-size: 9pt; font-weight: 900;
+      padding: 3px 10px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* ── Meta info box ── */
+    .meta-box {
+      margin: 12px 20px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .meta-box table {
+      width: 100%; border-collapse: collapse;
+      font-family: Arial, sans-serif; font-size: 10pt;
+    }
+    .meta-box td { padding: 6px 12px; border-bottom: 1px solid var(--border); }
+    .meta-box tr:last-child td { border-bottom: none; }
+    .meta-box .meta-label { width: 36%; font-weight: 700; color: #475569; }
+    .meta-box .meta-value {
+      border-bottom: 1px dotted #94a3b8;
+      min-width: 80px;
+    }
+    .meta-box .fill-hint {
+      font-size: 8pt; color: #94a3b8; font-style: italic;
+    }
+
+    /* ── Instructions ── */
+    .instructions {
+      margin: 10px 20px;
+      background: #eff6ff;
+      border-left: 4px solid var(--blue);
+      padding: 8px 14px;
+      border-radius: 0 6px 6px 0;
+    }
+    .instructions h3 {
+      font-family: Arial, sans-serif; font-size: 10pt; font-weight: 900;
+      color: var(--blue); margin-bottom: 4px;
+    }
+    .instructions ol {
+      padding-left: 16px; font-size: 9pt; color: #334155; line-height: 1.6;
+    }
+
+    /* ── Section heading ── */
+    .section-head {
+      margin: 12px 20px 6px;
+      background: #1e3a5f;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 10pt; font-weight: 900;
+      padding: 5px 14px;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .section-head .section-range {
+      font-size: 8.5pt; font-weight: 600; opacity: 0.8;
+    }
+
+    /* ── Question ── */
+    .question-block {
+      margin: 0 20px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+      page-break-inside: avoid;
+    }
+    .question-block:last-of-type { border-bottom: none; }
+
+    .question-header {
+      display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px;
+    }
+    .q-num {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      background: var(--blue);
+      color: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Arial, sans-serif; font-size: 9pt; font-weight: 900;
+    }
+    .q-text {
+      flex: 1;
+      min-height: 40px;
+      line-height: 1.6;
+      border-bottom: 1px dashed #cbd5e1;
+      padding-bottom: 4px;
+      font-size: 11pt;
+    }
+
+    /* image placeholder */
+    .img-placeholder {
+      margin: 6px 0 6px 32px;
+      border: 1.5px dashed #cbd5e1;
+      border-radius: 6px;
+      height: 70px;
+      display: flex; align-items: center; justify-content: center;
+      color: #94a3b8; font-family: Arial, sans-serif; font-size: 9pt;
+      font-style: italic;
+    }
+
+    /* Options */
+    .options { padding-left: 32px; }
+    .option-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 3px 0;
+      min-height: 22px;
+    }
+    .opt-label {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      border: 2px solid #94a3b8;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Arial, sans-serif; font-size: 8.5pt; font-weight: 700;
+      color: #475569;
+    }
+    .opt-text {
+      flex: 1;
+      font-size: 11pt;
+      border-bottom: 1px dashed #e2e8f0;
+      min-height: 18px;
+      padding-bottom: 2px;
+      line-height: 1.5;
+    }
+
+    /* ── Answer sheet mini ── */
+    .answer-strip {
+      margin: 14px 20px 8px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+    }
+    .answer-strip h3 {
+      font-family: Arial, sans-serif; font-size: 9.5pt; font-weight: 900;
+      color: #334155; margin-bottom: 8px;
+    }
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+    }
+    .ans-cell {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2px;
+    }
+    .ans-num {
+      font-family: Arial, sans-serif; font-size: 7pt; font-weight: 700;
+      color: #64748b;
+    }
+    .ans-opts {
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .ans-opt {
+      width: 16px; height: 14px;
+      border: 1px solid #94a3b8;
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Arial, sans-serif; font-size: 6pt; font-weight: 700;
+      color: #94a3b8;
+    }
+
+    /* ── Footer ── */
+    .page-footer {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding: 8px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: Arial, sans-serif; font-size: 8pt; color: #94a3b8;
+    }
+
+    /* ── Separator ── */
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+
+<!-- Print Controls (hidden on print) -->
+<div class="screen-wrapper">
+  <div class="print-bar no-print">
+    <div>
+      <h1>Template Soal – PASTI LULUS 1</h1>
+      <p>Isi kolom yang kosong, lalu klik "Cetak / Export PDF" untuk menyimpan sebagai PDF.</p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="window.location.href='/templates/template-pembahasan-pasti-lulus.html'">
+        ↗ Buka Template Pembahasan
+      </button>
+      <button class="btn btn-blue" onclick="window.print()">
+        🖨 Cetak / Export PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ PAGE 1 ═══ -->
+  <div class="page" id="page1">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-logo">PL</div>
+      <div class="header-text">
+        <div class="brand-name">Lolosujian · PASTI LULUS 1</div>
+        <div class="doc-title">Naskah Soal Tryout</div>
+      </div>
+      <div>
+        <div class="header-badge">RAHASIA</div>
+      </div>
+    </div>
+
+    <!-- Meta info -->
+    <div class="meta-box">
+      <table>
+        <tr>
+          <td class="meta-label">Universitas / Institusi</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          <td class="meta-label">Kode Paket</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+        </tr>
+        <tr>
+          <td class="meta-label">Program Studi / Jurusan</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+          <td class="meta-label">Jumlah Soal</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+        </tr>
+        <tr>
+          <td class="meta-label">Waktu Pengerjaan</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> menit</td>
+          <td class="meta-label">Tahun Ajaran</td>
+          <td><span class="meta-value">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions">
+      <h3>📌 Petunjuk Pengerjaan</h3>
+      <ol>
+        <li>Bacalah setiap soal dengan teliti sebelum menjawab.</li>
+        <li>Pilihlah satu jawaban yang paling tepat dari pilihan A, B, C, D, atau E.</li>
+        <li>Kerjakan soal yang dianggap mudah terlebih dahulu.</li>
+        <li>Penilaian: Benar = <strong>+4</strong>, Salah = <strong>−1</strong>, Kosong = <strong>0</strong>.</li>
+      </ol>
+    </div>
+
+    <!-- ── Subtes 1 ── -->
+    <div class="section-head">
+      <span>SUBTES I — [NAMA SUBTES / MATA PELAJARAN]</span>
+      <span class="section-range">Soal No. 1 – 10</span>
+    </div>
+
+    <!-- Q1 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">1</div>
+        <div class="q-text">
+          [Tulis teks soal nomor 1 di sini. Isi kalimat pertanyaan lengkap beserta konteks atau data jika ada.]
+        </div>
+      </div>
+      <div class="img-placeholder">[ Gambar / Tabel / Grafik (opsional) — Tempel di sini atau kosongkan ]</div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">2</div>
+        <div class="q-text">[Tulis teks soal nomor 2 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">3</div>
+        <div class="q-text">[Tulis teks soal nomor 3 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">4</div>
+        <div class="q-text">[Tulis teks soal nomor 4 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">5</div>
+        <div class="q-text">[Tulis teks soal nomor 5 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">6</div>
+        <div class="q-text">[Tulis teks soal nomor 6 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q7 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">7</div>
+        <div class="q-text">[Tulis teks soal nomor 7 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q8 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">8</div>
+        <div class="q-text">[Tulis teks soal nomor 8 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q9 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">9</div>
+        <div class="q-text">[Tulis teks soal nomor 9 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Q10 -->
+    <div class="question-block">
+      <div class="question-header">
+        <div class="q-num">10</div>
+        <div class="q-text">[Tulis teks soal nomor 10 di sini.]</div>
+      </div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>Lolosujian · PASTI LULUS 1 — Halaman 1</span>
+      <span>© 2026 Lolosujian · Dilarang memperbanyak tanpa izin</span>
+    </div>
+  </div><!-- /page1 -->
+
+  <!-- ═══════════════════════════════════════════ PAGE 2 ═══ -->
+  <div class="page page-break" id="page2">
+
+    <div class="header">
+      <div class="header-logo">PL</div>
+      <div class="header-text">
+        <div class="brand-name">Lolosujian · PASTI LULUS 1</div>
+        <div class="doc-title">Naskah Soal Tryout — Lanjutan</div>
+      </div>
+      <div class="header-badge">RAHASIA</div>
+    </div>
+
+    <!-- ── Subtes 2 ── -->
+    <div class="section-head">
+      <span>SUBTES II — [NAMA SUBTES / MATA PELAJARAN]</span>
+      <span class="section-range">Soal No. 11 – 20</span>
+    </div>
+
+    <!-- Q11–Q20 (same structure) -->
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">11</div><div class="q-text">[Tulis teks soal nomor 11 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">12</div><div class="q-text">[Tulis teks soal nomor 12 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">13</div><div class="q-text">[Tulis teks soal nomor 13 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">14</div><div class="q-text">[Tulis teks soal nomor 14 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">15</div><div class="q-text">[Tulis teks soal nomor 15 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">16</div><div class="q-text">[Tulis teks soal nomor 16 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">17</div><div class="q-text">[Tulis teks soal nomor 17 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">18</div><div class="q-text">[Tulis teks soal nomor 18 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">19</div><div class="q-text">[Tulis teks soal nomor 19 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">20</div><div class="q-text">[Tulis teks soal nomor 20 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>Lolosujian · PASTI LULUS 1 — Halaman 2</span>
+      <span>© 2026 Lolosujian · Dilarang memperbanyak tanpa izin</span>
+    </div>
+  </div><!-- /page2 -->
+
+  <!-- ═══════════════════════════════════════════ PAGE 3 ═══ -->
+  <div class="page page-break" id="page3">
+
+    <div class="header">
+      <div class="header-logo">PL</div>
+      <div class="header-text">
+        <div class="brand-name">Lolosujian · PASTI LULUS 1</div>
+        <div class="doc-title">Naskah Soal Tryout — Lanjutan</div>
+      </div>
+      <div class="header-badge">RAHASIA</div>
+    </div>
+
+    <!-- ── Subtes 3 ── -->
+    <div class="section-head">
+      <span>SUBTES III — [NAMA SUBTES / MATA PELAJARAN]</span>
+      <span class="section-range">Soal No. 21 – 30</span>
+    </div>
+
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">21</div><div class="q-text">[Tulis teks soal nomor 21 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">22</div><div class="q-text">[Tulis teks soal nomor 22 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">23</div><div class="q-text">[Tulis teks soal nomor 23 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">24</div><div class="q-text">[Tulis teks soal nomor 24 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">25</div><div class="q-text">[Tulis teks soal nomor 25 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">26</div><div class="q-text">[Tulis teks soal nomor 26 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">27</div><div class="q-text">[Tulis teks soal nomor 27 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">28</div><div class="q-text">[Tulis teks soal nomor 28 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">29</div><div class="q-text">[Tulis teks soal nomor 29 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+    <div class="question-block">
+      <div class="question-header"><div class="q-num">30</div><div class="q-text">[Tulis teks soal nomor 30 di sini.]</div></div>
+      <div class="options">
+        <div class="option-row"><div class="opt-label">A</div><div class="opt-text">[Pilihan A]</div></div>
+        <div class="option-row"><div class="opt-label">B</div><div class="opt-text">[Pilihan B]</div></div>
+        <div class="option-row"><div class="opt-label">C</div><div class="opt-text">[Pilihan C]</div></div>
+        <div class="option-row"><div class="opt-label">D</div><div class="opt-text">[Pilihan D]</div></div>
+        <div class="option-row"><div class="opt-label">E</div><div class="opt-text">[Pilihan E]</div></div>
+      </div>
+    </div>
+
+    <!-- Mini answer sheet -->
+    <div class="answer-strip">
+      <h3>Lembar Jawaban Singkat (Diisi Pengawas)</h3>
+      <div class="answer-grid">
+        <script>
+          for (let i = 1; i <= 30; i++) {
+            document.write('<div class="ans-cell"><div class="ans-num">' + i + '</div><div class="ans-opts">');
+            ['A','B','C','D','E'].forEach(function(opt) {
+              document.write('<div class="ans-opt">' + opt + '</div>');
+            });
+            document.write('</div></div>');
+          }
+        </script>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>Lolosujian · PASTI LULUS 1 — Halaman 3 (Terakhir)</span>
+      <span>© 2026 Lolosujian · Dilarang memperbanyak tanpa izin</span>
+    </div>
+  </div><!-- /page3 -->
+
+</div><!-- /screen-wrapper -->
+</body>
+</html>
