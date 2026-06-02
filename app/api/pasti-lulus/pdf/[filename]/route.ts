@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import fs from "fs";
 import { getCurrentSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const PDF_DIR = path.join(process.cwd(), "tryout_univ_jurusan_pastilulus_pdf");
+import { getSignedUrl } from "@/lib/pasti-lulus-storage";
 
 async function hasPastiLulusAccess(session: Awaited<ReturnType<typeof getCurrentSession>>): Promise<boolean> {
   if (!session) return false;
@@ -29,38 +26,20 @@ export async function GET(
   { params }: { params: Promise<{ filename: string }> },
 ) {
   const session = await getCurrentSession();
-  const hasAccess = await hasPastiLulusAccess(session);
-
-  if (!hasAccess) {
-    return new NextResponse("Akses ditolak. Redeem kode token terlebih dahulu.", { status: 403 });
+  if (!await hasPastiLulusAccess(session)) {
+    return new NextResponse("Akses ditolak.", { status: 403 });
   }
 
   const { filename } = await params;
-
-  // Sanitize: only allow alphanumeric, dashes, underscores, dots
   if (!/^[\w\-\.]+\.pdf$/i.test(filename)) {
     return new NextResponse("Nama file tidak valid.", { status: 400 });
   }
 
-  const filePath = path.join(PDF_DIR, filename);
-
-  // Prevent path traversal
-  if (!filePath.startsWith(PDF_DIR)) {
-    return new NextResponse("Akses ditolak.", { status: 403 });
+  // Coba dari storage: original/{filename}
+  const signedUrl = await getSignedUrl(`original/${filename}`);
+  if (!signedUrl) {
+    return new NextResponse("File tidak ditemukan di storage. Lakukan migrasi PDF terlebih dahulu.", { status: 404 });
   }
 
-  if (!fs.existsSync(filePath)) {
-    return new NextResponse("File tidak ditemukan.", { status: 404 });
-  }
-
-  const fileBuffer = fs.readFileSync(filePath);
-
-  return new NextResponse(fileBuffer, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
-      "Cache-Control": "private, max-age=3600",
-    },
-  });
+  return NextResponse.redirect(signedUrl);
 }

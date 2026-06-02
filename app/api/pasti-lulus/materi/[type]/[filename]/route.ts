@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import fs from "fs";
 import { getCurrentSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const UPLOAD_BASE = path.join(process.cwd(), "uploads", "pasti-lulus");
+import { getSignedUrl } from "@/lib/pasti-lulus-storage";
 
 async function hasPastiLulusAccess(session: Awaited<ReturnType<typeof getCurrentSession>>): Promise<boolean> {
   if (!session) return false;
@@ -29,10 +26,8 @@ export async function GET(
   { params }: { params: Promise<{ type: string; filename: string }> },
 ) {
   const session = await getCurrentSession();
-  const hasAccess = await hasPastiLulusAccess(session);
-
-  if (!hasAccess) {
-    return new NextResponse("Akses ditolak. Redeem kode token terlebih dahulu.", { status: 403 });
+  if (!await hasPastiLulusAccess(session)) {
+    return new NextResponse("Akses ditolak.", { status: 403 });
   }
 
   const { type, filename } = await params;
@@ -40,29 +35,14 @@ export async function GET(
   if (type !== "soal" && type !== "pembahasan") {
     return new NextResponse("Tipe tidak valid.", { status: 400 });
   }
-
   if (!/^[\w\-\.]+\.pdf$/i.test(filename)) {
     return new NextResponse("Nama file tidak valid.", { status: 400 });
   }
 
-  const filePath = path.join(UPLOAD_BASE, type, filename);
-
-  if (!filePath.startsWith(UPLOAD_BASE)) {
-    return new NextResponse("Akses ditolak.", { status: 403 });
+  const signedUrl = await getSignedUrl(`${type}/${filename}`);
+  if (!signedUrl) {
+    return new NextResponse("File tidak ditemukan di storage.", { status: 404 });
   }
 
-  if (!fs.existsSync(filePath)) {
-    return new NextResponse("File tidak ditemukan.", { status: 404 });
-  }
-
-  const fileBuffer = fs.readFileSync(filePath);
-
-  return new NextResponse(fileBuffer, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
-      "Cache-Control": "private, max-age=3600",
-    },
-  });
+  return NextResponse.redirect(signedUrl);
 }

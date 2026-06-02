@@ -128,8 +128,8 @@ export type AdminPortalData = {
     nomor: string;
     universitas: string;
     jurusan: string;
-    soalFilename: string | null;
-    pembahasanFilename: string | null;
+    soalStoragePath: string | null;
+    pembahasanStoragePath: string | null;
     updatedAt: string;
   }>;
   crmConversations: Array<{
@@ -200,7 +200,7 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
     supabase.from("tryout_registrations").select("id,user_id,email,nama,whatsapp,sekolah,kelas,jurusan,kartu_url,status,registered_at").order("registered_at", { ascending: false }).limit(200),
     supabase.from("question_bank_uploads").select("id,paket_id,paket_title,paket_subtitle,soal_count,durasi_menit,akses,scoring_type,uploaded_by,created_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("pasti_lulus_tokens").select("id,token,note,redeemed_by,redeemed_at,is_active,created_at").order("created_at", { ascending: false }).limit(500),
-    supabase.from("pasti_lulus_materials").select("nomor,universitas,jurusan,soal_filename,pembahasan_filename,updated_at").order("nomor", { ascending: true }),
+    supabase.from("pasti_lulus_materials").select("nomor,universitas,jurusan,soal_storage_path,pembahasan_storage_path,updated_at").order("nomor", { ascending: true }),
   ]);
 
   const scoreByUser = new Map<string, { count: number; total: number }>();
@@ -345,8 +345,8 @@ export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> 
       nomor: m.nomor,
       universitas: m.universitas,
       jurusan: m.jurusan,
-      soalFilename: m.soal_filename ?? null,
-      pembahasanFilename: m.pembahasan_filename ?? null,
+      soalStoragePath: m.soal_storage_path ?? null,
+      pembahasanStoragePath: m.pembahasan_storage_path ?? null,
       updatedAt: formatDate(m.updated_at),
     })),
     pastiLulusTokens: (pastiLulusTokensData.data ?? []).map((t) => ({

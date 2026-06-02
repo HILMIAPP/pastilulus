@@ -599,19 +599,19 @@ export default function AdminPortal({ initialData = {}, staticPakets = [] }: { i
               onGenerate={generatePastiLulusTokens}
               onDeactivate={deactivatePlToken}
               onBulkUpdate={bulkUpdatePlTokens}
-              onMaterialUploaded={(nomor, type, filename, universitas, jurusan) => {
+              onMaterialUploaded={(nomor, type, storagePath, universitas, jurusan) => {
                 setPastiLulusMaterials((prev) => {
                   const exists = prev.find((m) => m.nomor === nomor);
                   if (exists) {
                     return prev.map((m) =>
                       m.nomor === nomor
-                        ? { ...m, [type === "soal" ? "soalFilename" : "pembahasanFilename"]: filename }
+                        ? { ...m, [type === "soal" ? "soalStoragePath" : "pembahasanStoragePath"]: storagePath }
                         : m,
                     );
                   }
                   return [
                     ...prev,
-                    { nomor, universitas, jurusan, soalFilename: type === "soal" ? filename : null, pembahasanFilename: type === "pembahasan" ? filename : null, updatedAt: "Baru saja" },
+                    { nomor, universitas, jurusan, soalStoragePath: type === "soal" ? storagePath : null, pembahasanStoragePath: type === "pembahasan" ? storagePath : null, updatedAt: "Baru saja" },
                   ];
                 });
               }}
@@ -2544,8 +2544,8 @@ type PastiLulusMaterialRow = {
   nomor: string;
   universitas: string;
   jurusan: string;
-  soalFilename: string | null;
-  pembahasanFilename: string | null;
+  soalStoragePath: string | null;
+  pembahasanStoragePath: string | null;
   updatedAt: string;
 };
 
@@ -2580,7 +2580,7 @@ function PastiLulusTokenView({
   onGenerate: () => Promise<void>;
   onDeactivate: (id: string) => Promise<void>;
   onBulkUpdate: (ids: string[], action: "deactivate" | "activate" | "delete") => Promise<void>;
-  onMaterialUploaded: (nomor: string, type: "soal" | "pembahasan", filename: string, universitas: string, jurusan: string) => void;
+  onMaterialUploaded: (nomor: string, type: "soal" | "pembahasan", storagePath: string, universitas: string, jurusan: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -2927,7 +2927,7 @@ function PastiLulusMaterialsUpload({
   onUploaded,
 }: {
   materials: PastiLulusMaterialRow[];
-  onUploaded: (nomor: string, type: "soal" | "pembahasan", filename: string, universitas: string, jurusan: string) => void;
+  onUploaded: (nomor: string, type: "soal" | "pembahasan", storagePath: string, universitas: string, jurusan: string) => void;
 }) {
   const [uploadingKey, setUploadingKey] = useState<string>("");
   const [uploadMsg, setUploadMsg] = useState<Record<string, string>>({});
@@ -2982,9 +2982,9 @@ function PastiLulusMaterialsUpload({
 
     try {
       const res = await fetch("/api/admin/pasti-lulus-upload", { method: "POST", body: fd });
-      const json = await res.json() as { ok?: boolean; filename?: string; error?: string };
-      if (json.ok && json.filename) {
-        onUploaded(nomor, item.type, json.filename, universitas, jurusan);
+      const json = await res.json() as { ok?: boolean; storagePath?: string; error?: string };
+      if (json.ok && json.storagePath) {
+        onUploaded(nomor, item.type, json.storagePath, universitas, jurusan);
         updateQueueItem(item.id, { status: "done" });
       } else {
         updateQueueItem(item.id, { status: "error", error: json.error ?? "Gagal" });
@@ -3028,9 +3028,9 @@ function PastiLulusMaterialsUpload({
 
     try {
       const res = await fetch("/api/admin/pasti-lulus-upload", { method: "POST", body: fd });
-      const json = await res.json() as { ok?: boolean; filename?: string; error?: string };
-      if (json.ok && json.filename) {
-        onUploaded(nomor, type, json.filename, universitas, jurusan);
+      const json = await res.json() as { ok?: boolean; storagePath?: string; error?: string };
+      if (json.ok && json.storagePath) {
+        onUploaded(nomor, type, json.storagePath, universitas, jurusan);
         setUploadMsg((prev) => ({ ...prev, [key]: "✓ Berhasil diupload" }));
       } else {
         setUploadMsg((prev) => ({ ...prev, [key]: json.error ?? "Gagal upload" }));
@@ -3221,8 +3221,8 @@ function PastiLulusMaterialsUpload({
           const mat = matByNomor[item.nomor];
           const soalKey = `${item.nomor}-soal`;
           const pembahasanKey = `${item.nomor}-pembahasan`;
-          const hasSoalUpload = Boolean(mat?.soalFilename);
-          const hasPembahasan = Boolean(mat?.pembahasanFilename);
+          const hasSoalUpload = Boolean(mat?.soalStoragePath);
+          const hasPembahasan = Boolean(mat?.pembahasanStoragePath);
 
           return (
             <div key={item.nomor} className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-5 py-3">

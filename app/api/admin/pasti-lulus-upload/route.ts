@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import fs from "fs";
 import { getCurrentSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const UPLOAD_BASE = path.join(process.cwd(), "uploads", "pasti-lulus");
-
-function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
+import { makeStoragePath, uploadToStorage } from "@/lib/pasti-lulus-storage";
 
 export async function POST(req: NextRequest) {
   const session = await getCurrentSession().catch(() => null);
@@ -32,52 +25,40 @@ export async function POST(req: NextRequest) {
   if (!nomor || !type || !file) {
     return NextResponse.json({ error: "nomor, type, dan file wajib diisi." }, { status: 400 });
   }
-
   if (type !== "soal" && type !== "pembahasan") {
     return NextResponse.json({ error: "type harus 'soal' atau 'pembahasan'." }, { status: 400 });
   }
-
+  if (!/^\d{2}$/.test(nomor)) {
+    return NextResponse.json({ error: "nomor harus 2 digit angka." }, { status: 400 });
+  }
   if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
     return NextResponse.json({ error: "Hanya file PDF yang diizinkan." }, { status: 400 });
   }
 
-  // Sanitize nomor: only 2-digit numbers
-  if (!/^\d{2}$/.test(nomor)) {
-    return NextResponse.json({ error: "nomor harus 2 digit angka." }, { status: 400 });
+  const storagePath = makeStoragePath(nomor, type as "soal" | "pembahasan");
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await uploadToStorage(storagePath, Buffer.from(arrayBuffer));
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error ?? "Gagal upload ke storage." }, { status: 500 });
   }
 
-  const targetDir = path.join(UPLOAD_BASE, type);
-  ensureDir(targetDir);
-
-  // Filename: {nomor}_{type}.pdf — deterministic, so re-upload replaces old
-  const filename = `${nomor}_${type}.pdf`;
-  const filePath = path.join(targetDir, filename);
-
-  const arrayBuffer = await file.arrayBuffer();
-  fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
-
-  // Upsert to pasti_lulus_materials
+  // Upsert ke pasti_lulus_materials
   const supabase = createAdminClient();
   if (supabase) {
-    const updateField = type === "soal" ? "soal_filename" : "pembahasan_filename";
-    const { error } = await supabase
-      .from("pasti_lulus_materials")
-      .upsert(
-        {
-          nomor,
-          universitas,
-          jurusan,
-          [updateField]: filename,
-          uploaded_by: session.userId,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "nomor" },
-      );
-
-    if (error) {
-      console.error("[pasti-lulus-upload]", error.message);
-    }
+    const updateField = type === "soal" ? "soal_storage_path" : "pembahasan_storage_path";
+    await supabase.from("pasti_lulus_materials").upsert(
+      {
+        nomor,
+        universitas,
+        jurusan,
+        [updateField]: storagePath,
+        uploaded_by: session.userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "nomor" },
+    );
   }
 
-  return NextResponse.json({ ok: true, filename });
+  return NextResponse.json({ ok: true, storagePath });
 }
