@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { syncMayarPaymentByOrderId } from "@/lib/mayar-payment-sync";
 import { seoBlogSeedPosts } from "@/lib/seo-blog-seed";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentSession } from "@/lib/session";
@@ -21,14 +22,15 @@ export async function syncPaymentTransactionAction(orderId: string) {
   const supabase = createAdminClient();
   if (!supabase) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY belum diisi." };
 
-  const { error } = await supabase
-    .from("payment_transactions")
-    .update({ status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("order_id", orderId);
+  const status = await syncMayarPaymentByOrderId(orderId);
+  if (!status) return { ok: false, message: "Transaksi tidak ditemukan atau Mayar belum bisa dihubungi." };
 
-  if (error) return { ok: false, message: error.message };
   revalidatePath("/admin");
-  return { ok: true };
+  return {
+    ok: true,
+    status,
+    message: status === "paid" ? "Status pembayaran sudah paid dan paket disinkronkan." : `Status Mayar masih ${status}.`,
+  };
 }
 
 export async function createPromoCodeAction(input: {

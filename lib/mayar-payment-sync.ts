@@ -12,9 +12,15 @@ type PaymentTransactionForSync = {
   user_id: string | null;
   plan: "belajar" | "pro";
   customer_email: string | null;
+  customer_name?: string | null;
+  payment_method?: string | null;
+  provider_payment_url?: string | null;
   provider_payment_id: string | null;
   provider_transaction_id: string | null;
+  paid_at?: string | null;
 };
+
+let lastAdminBackfillAt = 0;
 
 function getMayarBaseUrl() {
   return (process.env.MAYAR_BASE_URL ?? "https://api.mayar.id/hl/v1").replace(/\/+$/, "");
@@ -127,6 +133,61 @@ async function fetchMayarInvoiceByOrderId(orderId: string) {
   return null;
 }
 
+async function fetchMayarInvoicePage(page: number) {
+  if (!process.env.MAYAR_API_KEY) return null;
+
+  try {
+    const response = await fetch(`${getMayarBaseUrl()}/invoice?page=${page}`, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${process.env.MAYAR_API_KEY}`,
+      },
+    });
+
+    if (!response.ok) return null;
+    return (await response.json()) as JsonObject;
+  } catch {
+    return null;
+  }
+}
+
+function findBooleanHasMore(value: JsonObject) {
+  return value.hasMore === true || value.has_more === true;
+}
+
+function getInvoiceList(value: JsonObject) {
+  if (Array.isArray(value.data)) return value.data.filter(getNestedObject);
+  if (Array.isArray(value.invoices)) return value.invoices.filter(getNestedObject);
+  if (Array.isArray(value.items)) return value.items.filter(getNestedObject);
+  return [];
+}
+
+function normalizeProviderStatus(value: unknown): "pending" | "paid" | "expired" | "failed" {
+  if (hasPaidStatus(value)) return "paid";
+  const status = findStringByKeys(value, ["status", "paymentStatus", "payment_status"])?.toLowerCase() ?? "";
+  if (["expire", "expired"].some((expiredStatus) => status.includes(expiredStatus))) return "expired";
+  if (["fail", "failed", "cancel", "void"].some((failedStatus) => status.includes(failedStatus))) return "failed";
+  return "pending";
+}
+
+function deriveOrderIdFromInvoice(invoice: JsonObject, providerPaymentId: string) {
+  const explicitOrderId = findStringByKeys(invoice, ["orderId", "order_id"]);
+  if (explicitOrderId) return explicitOrderId;
+
+  const raw = JSON.stringify(invoice);
+  const match = raw.match(/PL-[a-z0-9_-]+-\d{10,}-[a-z0-9_-]+/i);
+  if (match) return match[0];
+
+  return `MYR-${providerPaymentId}`;
+}
+
+function derivePlanFromInvoice(invoice: JsonObject, orderId: string): "belajar" | "pro" {
+  const plan = findStringByKeys(invoice, ["planId", "plan_id", "plan"])?.toLowerCase();
+  if (plan === "pro" || orderId.toLowerCase().includes("-pro-")) return "pro";
+  return "belajar";
+}
+
 async function upsertSubscriptionCompat(
   supabaseAdmin: NonNullable<ReturnType<typeof createAdminClient>>,
   input: {
@@ -220,6 +281,113 @@ async function applyPaidSideEffects(transaction: PaymentTransactionForSync) {
       .update({ tier: transaction.plan, updated_at: new Date().toISOString() })
       .eq("id", transaction.user_id);
   }
+}
+
+export async function backfillRecentMayarInvoicesForAdmin() {
+  const supabaseAdmin = createAdminClient();
+  if (!supabaseAdmin || !process.env.MAYAR_API_KEY) return { ok: false, imported: 0, synced: 0 };
+
+  const now = Date.now();
+  if (now - lastAdminBackfillAt < 60_000) return { ok: true, imported: 0, synced: 0 };
+  lastAdminBackfillAt = now;
+
+  let imported = 0;
+  let synced = 0;
+
+  for (let page = 1; page <= 2; page += 1) {
+    const payload = await fetchMayarInvoicePage(page);
+    if (!payload) break;
+
+    const invoices = getInvoiceList(payload);
+    for (const invoice of invoices) {
+      const providerPaymentId = findStringByKeys(invoice, ["invoiceId", "invoice_id", "paymentId", "payment_id", "id"]);
+      if (!providerPaymentId) continue;
+
+      const amount = findNumberByKeys(invoice, ["amount", "totalAmount", "total_amount", "paidAmount", "paid_amount", "grossAmount", "gross_amount"]);
+      if (amount === null) continue;
+
+      const orderId = deriveOrderIdFromInvoice(invoice, providerPaymentId);
+      const plan = derivePlanFromInvoice(invoice, orderId);
+      const customerEmail = findStringByKeys(invoice, ["email", "customerEmail", "customer_email"]);
+      const customerName = findStringByKeys(invoice, ["name", "customerName", "customer_name"]);
+      const providerTransactionId = findStringByKeys(invoice, ["transactionId", "transaction_id"]);
+      const paymentMethod = findStringByKeys(invoice, ["paymentMethod", "payment_method", "method", "channel"]);
+      const paymentUrl = findStringByKeys(invoice, ["link", "paymentUrl", "paymentURL", "url"]);
+      const status = normalizeProviderStatus(invoice);
+      const paidAt = findStringByKeys(invoice, ["paidAt", "paid_at", "settledAt", "settled_at"]);
+      const createdAt = findStringByKeys(invoice, ["createdAt", "created_at"]);
+
+      const { data: existingByOrderId } = await supabaseAdmin
+        .from("payment_transactions")
+        .select("order_id,status,user_id,promo_code,affiliate_code,amount,plan,customer_email,customer_name,payment_method,provider_payment_id,provider_transaction_id,provider_payment_url,paid_at")
+        .eq("order_id", orderId)
+        .maybeSingle<PaymentTransactionForSync>();
+      const { data: existingByProviderId } = existingByOrderId
+        ? { data: null }
+        : await supabaseAdmin
+            .from("payment_transactions")
+            .select("order_id,status,user_id,promo_code,affiliate_code,amount,plan,customer_email,customer_name,payment_method,provider_payment_id,provider_transaction_id,provider_payment_url,paid_at")
+            .eq("provider_payment_id", providerPaymentId)
+            .maybeSingle<PaymentTransactionForSync>();
+      const existing = existingByOrderId ?? existingByProviderId;
+
+      let userId = existing?.user_id ?? null;
+      if (!userId && customerEmail) {
+        const { data: profile } = await supabaseAdmin.from("profiles").select("id").eq("email", customerEmail).maybeSingle<{ id: string }>();
+        userId = profile?.id ?? null;
+      }
+
+      const transaction: PaymentTransactionForSync = existing ?? {
+        order_id: orderId,
+        status,
+        promo_code: null,
+        affiliate_code: null,
+        amount,
+        user_id: userId,
+        plan,
+        customer_email: customerEmail,
+        provider_payment_id: providerPaymentId,
+        provider_transaction_id: providerTransactionId,
+      };
+      const nextStatus = existing?.status === "paid" ? "paid" : status;
+
+      const { error } = await supabaseAdmin.from("payment_transactions").upsert(
+        {
+          order_id: orderId,
+          user_id: userId,
+          customer_name: customerName ?? existing?.customer_name ?? "User Mayar",
+          customer_email: customerEmail ?? existing?.customer_email,
+          plan,
+          amount,
+          payment_provider: "mayar",
+          payment_method: paymentMethod ?? existing?.payment_method,
+          provider_payment_id: providerPaymentId,
+          provider_transaction_id: providerTransactionId ?? existing?.provider_transaction_id,
+          provider_payment_url: paymentUrl ?? existing?.provider_payment_url,
+          status: nextStatus,
+          raw_payload: {
+            source: "mayar-admin-backfill",
+            providerResponse: invoice,
+          },
+          paid_at: nextStatus === "paid" ? (existing?.paid_at ?? (paidAt ? new Date(paidAt).toISOString() : new Date().toISOString())) : null,
+          created_at: createdAt ? new Date(createdAt).toISOString() : undefined,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "order_id" },
+      );
+
+      if (error) continue;
+      if (!existing) imported += 1;
+      if (nextStatus === "paid" && transaction.status !== "paid") {
+        await applyPaidSideEffects({ ...transaction, status: "pending", user_id: userId });
+        synced += 1;
+      }
+    }
+
+    if (!findBooleanHasMore(payload)) break;
+  }
+
+  return { ok: true, imported, synced };
 }
 
 async function recoverMissingTransaction(orderId: string, session?: AppSession | null) {

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { backfillRecentMayarInvoicesForAdmin } from "@/lib/mayar-payment-sync";
 
 export type AdminPtn = {
   id: string;
@@ -180,6 +181,8 @@ function deriveCrmChannel(sourcePage?: string | null): "website" | "whatsapp" {
 export async function fetchAdminPortalData(): Promise<Partial<AdminPortalData>> {
   const supabase = createAdminClient();
   if (!supabase) return {};
+
+  await backfillRecentMayarInvoicesForAdmin();
 
   const [profiles, transactions, promos, affiliates, blogPosts, siteContent, examSessions, crmConversations, crmMessages, ptns, ptnDeadlines, broadcasts] = await Promise.all([
     supabase.from("profiles").select("id,full_name,email,tier,role,target_ptns,created_at,updated_at").order("created_at", { ascending: false }).limit(100),

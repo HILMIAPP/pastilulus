@@ -259,9 +259,11 @@ export default function AdminPortal({ initialData = {}, staticPakets = [] }: { i
 
   const syncTransaction = async (id: string) => {
     const orderId = transactions.find((trx) => trx.id === id)?.orderId;
-    setTransactions((prev) => prev.map((trx) => (trx.id === id && trx.status === "pending" ? { ...trx, status: "paid", paidAt: "Baru saja" } : trx)));
-    if (orderId) await syncPaymentTransactionAction(orderId);
+    const result = orderId
+      ? await syncPaymentTransactionAction(orderId)
+      : { ok: false, message: "Order ID transaksi tidak ditemukan." };
     await refreshRealtimeData();
+    return result;
   };
 
   const createPromo = async () => {
@@ -845,11 +847,24 @@ function BillingView({
   transactions: TransactionRow[];
   selectedTransaction: TransactionRow | undefined;
   onSelectTransaction: (id: string) => void;
-  onSyncTransaction: (id: string) => void;
+  onSyncTransaction: (id: string) => Promise<{ ok: boolean; message?: string; status?: string }>;
 }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending" | "expired" | "failed">("all");
+  const [syncingId, setSyncingId] = useState("");
+  const [syncMessage, setSyncMessage] = useState("");
 
   const filtered = statusFilter === "all" ? transactions : transactions.filter((t) => t.status === statusFilter);
+
+  async function handleSync(id: string) {
+    setSyncingId(id);
+    setSyncMessage("");
+    try {
+      const result = await onSyncTransaction(id);
+      setSyncMessage(result.message ?? (result.ok ? "Transaksi berhasil disinkronkan." : "Gagal menyinkronkan transaksi."));
+    } finally {
+      setSyncingId("");
+    }
+  }
 
   function exportCsv() {
     const headers = ["Order ID", "User", "Email", "Paket", "Jumlah", "Metode", "Status", "Promo", "Affiliate", "Dibayar", "Dibuat"];
@@ -889,6 +904,12 @@ function BillingView({
         }
       />
 
+      {syncMessage && (
+        <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
+          {syncMessage}
+        </p>
+      )}
+
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <TableCard>
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
@@ -927,8 +948,13 @@ function BillingView({
                     <button onClick={() => onSelectTransaction(trx.id)} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:text-blue-600">
                       <Eye size={15} />
                     </button>
-                    <button onClick={() => onSyncTransaction(trx.id)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-700">
-                      Sinkron
+                    <button
+                      onClick={() => void handleSync(trx.id)}
+                      disabled={syncingId === trx.id}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {syncingId === trx.id && <Loader2 size={12} className="animate-spin" />}
+                      {syncingId === trx.id ? "Cek..." : "Sinkron"}
                     </button>
                   </div>
                 </Td>
@@ -953,10 +979,12 @@ function BillingView({
                 <DetailRow label="Dibayar" value={selectedTransaction.paidAt} />
               </div>
               <button
-                onClick={() => onSyncTransaction(selectedTransaction.id)}
-                className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800"
+                onClick={() => void handleSync(selectedTransaction.id)}
+                disabled={syncingId === selectedTransaction.id}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-60"
               >
-                Sinkron status pembayaran
+                {syncingId === selectedTransaction.id && <Loader2 size={14} className="animate-spin" />}
+                {syncingId === selectedTransaction.id ? "Mengecek Mayar..." : "Sinkron status pembayaran"}
               </button>
             </>
           ) : (
