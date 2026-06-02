@@ -1,8 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // output: "standalone" dihapus — Vercel tidak memerlukannya
-  // (standalone hanya untuk VPS/Docker dengan node server.js)
+  async redirects() {
+    return [
+      // Canonical: redirect www → non-www agar OAuth callback URL konsisten
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.nukaedu.web.id" }],
+        destination: "https://nukaedu.web.id/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
