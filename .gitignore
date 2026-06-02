@@ -52,3 +52,10 @@ tmp_docx_peek/
 
 # Claude Code internal worktrees
 .claude/worktrees/
+
+# Deploy artifacts
+lolosujian-deploy.tar.gz
+lolosujian-deploy.zip
+
+# Local PDF uploads (ke Supabase Storage)
+uploads/
