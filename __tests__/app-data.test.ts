@@ -2,10 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   tryoutPaket,
   tryoutUmptkinPaket,
+  tryoutPastiLulusPaket,
   soalPaketById,
   type TryoutPaket,
   type TryoutQuestion,
 } from "@/lib/app-data";
+import { PASTI_LULUS_ITEMS, getPastiLulusDefaultFolder } from "@/lib/pasti-lulus-data";
 
 const VALID_AKSES = ["gratis", "belajar_pro"] as const;
 const PILIHAN_KEYS = ["A", "B", "C", "D", "E"] as const;
@@ -111,6 +113,40 @@ describe("tryoutUmptkinPaket (UM PTKIN)", () => {
     for (const paket of tryoutUmptkinPaket) {
       expect(paket.soalCount).toBe(121);
       expect(paket.durasiMenit).toBe(120);
+    }
+  });
+});
+
+describe("PASTI_LULUS_ITEMS", () => {
+  it("should include all 39 PDF tryouts from the main, additional, and batch 2 folders", () => {
+    expect(PASTI_LULUS_ITEMS).toHaveLength(39);
+    expect(PASTI_LULUS_ITEMS[27].defaultSoalFilename).toBe("universitas_andalas_kedokteran_gigi.pdf");
+    expect(PASTI_LULUS_ITEMS[36].defaultSoalFilename).toBe("UNAND_Kedokteran_Tryout_Pastilulus.pdf");
+  });
+
+  it("should resolve the default storage folder by item number", () => {
+    expect(getPastiLulusDefaultFolder("27")).toBe("tryout_univ_jurusan_pastilulus_pdf");
+    expect(getPastiLulusDefaultFolder("28")).toBe("tryout_tambahan_univ_jurusan_pastilulus_pdf");
+    expect(getPastiLulusDefaultFolder("37")).toBe("tryout_tambahan_batch2_univ_jurusan_pastilulus_pdf");
+  });
+});
+
+describe("tryoutPastiLulusPaket", () => {
+  it("should expose all PASTI LULUS PDFs as tryout packages", () => {
+    expect(tryoutPastiLulusPaket).toHaveLength(PASTI_LULUS_ITEMS.length);
+    expect(tryoutPastiLulusPaket[0]).toMatchObject({
+      id: "pasti-lulus-01",
+      slug: "pasti-lulus-01",
+      requiresPastiLulusToken: true,
+      soalCount: 160,
+    });
+  });
+
+  it("should have valid shape for every PASTI LULUS tryout package", () => {
+    for (const paket of tryoutPastiLulusPaket) {
+      assertPaketShape(paket);
+      expect(paket.requiresPastiLulusToken).toBe(true);
+      expect(soalPaketById[paket.id]).toHaveLength(paket.soalCount);
     }
   });
 });

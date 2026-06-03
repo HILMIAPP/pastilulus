@@ -1,6 +1,7 @@
-import { tryoutPaket, tryoutUmptkinPaket, soalPaketById } from "@/lib/app-data";
+import { tryoutPaket, tryoutUmptkinPaket, tryoutPastiLulusPaket, soalPaketById } from "@/lib/app-data";
 import { canAccessTier, getCurrentSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkPastiLulusAccessAction } from "@/lib/pasti-lulus-actions";
 
 /**
  * GET /api/tryout/questions/[paketId]
@@ -16,8 +17,8 @@ export async function GET(
   const { paketId } = await params;
 
   // Cari metadata paket (PTN atau PTKIN)
-  const allPaket = [...tryoutPaket, ...tryoutUmptkinPaket];
-  let paket = allPaket.find((p) => p.slug === paketId);
+  const allPaket = [...tryoutPaket, ...tryoutUmptkinPaket, ...tryoutPastiLulusPaket];
+  const paket = allPaket.find((p) => p.slug === paketId);
 
   // Cek sesi & tier
   const session = await getCurrentSession();
@@ -55,7 +56,15 @@ export async function GET(
     return Response.json({ error: "Paket tidak ditemukan." }, { status: 404 });
   }
 
-  if (!canAccessTier(session?.tier ?? "free", paket.akses)) {
+  if (paket.requiresPastiLulusToken) {
+    const hasPastiLulusAccess = await checkPastiLulusAccessAction();
+    if (!hasPastiLulusAccess) {
+      return Response.json(
+        { error: "Akses ditolak. Masukkan token PASTI LULUS untuk mengerjakan paket ini." },
+        { status: 403 },
+      );
+    }
+  } else if (!canAccessTier(session?.tier ?? "free", paket.akses)) {
     return Response.json(
       { error: "Akses ditolak. Upgrade paket untuk mengerjakan soal ini." },
       { status: 403 },

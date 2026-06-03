@@ -4,7 +4,7 @@ import { BookOpen, BookText, Download, ExternalLink, FileText, Star, Trophy } fr
 import { getCurrentSession } from "@/lib/session";
 import { checkPastiLulusAccessAction } from "@/lib/pasti-lulus-actions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ADDITIONAL_INDEX_PDF_FILENAMES, PASTI_LULUS_ITEMS, INDEX_PDF_FILENAME } from "@/lib/pasti-lulus-data";
+import { ADDITIONAL_INDEX_PDF_FILENAMES, PASTI_LULUS_ITEMS, INDEX_PDF_FILENAME, getPastiLulusDefaultFolder } from "@/lib/pasti-lulus-data";
 import { getSignedUrl } from "@/lib/pasti-lulus-storage";
 
 type MaterialRecord = {
@@ -20,6 +20,14 @@ type ResolvedItem = {
   soalUrl: string | null;
   pembahasanUrl: string | null;
 };
+
+async function getFirstSignedUrl(paths: string[]): Promise<string | null> {
+  for (const path of paths) {
+    const url = await getSignedUrl(path);
+    if (url) return url;
+  }
+  return null;
+}
 
 async function fetchResolvedItems(): Promise<ResolvedItem[]> {
   const supabase = createAdminClient();
@@ -40,12 +48,16 @@ async function fetchResolvedItems(): Promise<ResolvedItem[]> {
     PASTI_LULUS_ITEMS.map(async (item) => {
       const mat = materialsMap.get(item.nomor);
 
-      // Soal: prefer custom upload, fallback to original
-      const soalPath = mat?.soal_storage_path ?? `original/${item.defaultSoalFilename}`;
+      // Soal: prefer custom upload, fallback to original files from all migrated folders.
+      const fallbackSoalPaths = [
+        `original/${item.defaultSoalFilename}`,
+        `original/${item.nomor}_${item.defaultSoalFilename}`,
+        `original/${getPastiLulusDefaultFolder(item.nomor)}/${item.defaultSoalFilename}`,
+      ];
       const pembahasanPath = mat?.pembahasan_storage_path ?? null;
 
       const [soalUrl, pembahasanUrl] = await Promise.all([
-        getSignedUrl(soalPath),
+        mat?.soal_storage_path ? getSignedUrl(mat.soal_storage_path) : getFirstSignedUrl(fallbackSoalPaths),
         pembahasanPath ? getSignedUrl(pembahasanPath) : Promise.resolve(null),
       ]);
 

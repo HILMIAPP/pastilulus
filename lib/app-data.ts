@@ -1,6 +1,8 @@
 import { soalUmPaket1, soalUmPaket2 } from "@/lib/um-question-bank";
 import { soalUm10PtnPaket } from "@/lib/um-question-bank-10-ptn";
 import { soalUmptkinPaket1, soalUmptkinPaket2, soalUmptkinPaket3, soalUmptkinPaket4, soalUmptkinPaket5 } from "@/lib/umptkin-question-bank";
+import { PASTI_LULUS_ITEMS } from "@/lib/pasti-lulus-data";
+import { pastiLulusQuestionCounts, soalPastiLulusPaketById } from "@/lib/pasti-lulus-question-bank";
 
 /** Konten try out hasil impor dari folder SOAL UM. */
 
@@ -18,8 +20,10 @@ export type TryoutPaket = {
   /**
    * "classical" — benar +4, salah −1, kosong 0  (UM Mandiri PTN)
    * "irt"       — penilaian IRT 3-PL per sub-tes, skala 0–1000 (UM-PTKIN)
-   */
+  */
   scoringType: "classical" | "irt";
+  /** Paket dengan gate token PASTI LULUS, bukan gate tier langganan. */
+  requiresPastiLulusToken?: boolean;
   /** Path logo institusi di /public (opsional). Ditampilkan di kartu paket. */
   logoUrl?: string;
 };
@@ -190,6 +194,21 @@ export const tryoutPaket: TryoutPaket[] = [
   ...kampusTryoutPaket,
 ];
 
+export const tryoutPastiLulusPaket: TryoutPaket[] = PASTI_LULUS_ITEMS.map((item) => ({
+  id: `pasti-lulus-${item.nomor}`,
+  slug: `pasti-lulus-${item.nomor}`,
+  title: `${item.universitas} - ${item.jurusan}`,
+  subtitle: "Tryout CBT PASTI LULUS 1 dari naskah PDF",
+  soalCount: pastiLulusQuestionCounts[`pasti-lulus-${item.nomor}` as keyof typeof pastiLulusQuestionCounts] ?? 0,
+  durasiMenit: 120,
+  pola: "Simulasi CBT spesifik universitas dan jurusan pilihan.",
+  akses: "gratis",
+  scoring: CLASSICAL_SCORING,
+  scoringType: "classical",
+  requiresPastiLulusToken: true,
+  logoUrl: "/assets/univ/logo-multi-ptn.svg",
+}));
+
 export type TryoutQuestion = {
   id: string;
   nomor: number;
@@ -213,6 +232,7 @@ export const soalPaketById: Record<string, TryoutQuestion[]> = {
   "umptkin-3": soalUmptkinPaket3,
   "umptkin-4": soalUmptkinPaket4,
   "umptkin-5": soalUmptkinPaket5,
+  ...soalPastiLulusPaketById,
 };
 
 export const tryoutUmptkinPaket: TryoutPaket[] = [

@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Loader2, Trophy, X } from "lucide-react";
 import { redeemPastiLulusTokenAction } from "@/lib/pasti-lulus-actions";
+import { PASTI_LULUS_ITEMS } from "@/lib/pasti-lulus-data";
+
+const PASTI_LULUS_PACKAGE_COUNT = PASTI_LULUS_ITEMS.length;
 
 export function PastiLulusCard({ hasAccess }: { hasAccess: boolean }) {
   const router = useRouter();
@@ -47,7 +50,7 @@ export function PastiLulusCard({ hasAccess }: { hasAccess: boolean }) {
               </span>
             </div>
             <p className="mt-0.5 text-sm text-slate-600 leading-snug">
-              27 paket tryout spesifik universitas &amp; jurusan pilihan — dirancang agar kamu PASTI LULUS.
+              {PASTI_LULUS_PACKAGE_COUNT} paket tryout spesifik universitas &amp; jurusan pilihan — dirancang agar kamu PASTI LULUS.
             </p>
           </div>
         </div>
@@ -55,7 +58,7 @@ export function PastiLulusCard({ hasAccess }: { hasAccess: boolean }) {
         <dl className="relative mt-4 grid grid-cols-2 gap-3 text-xs text-slate-600">
           <div className="rounded-xl bg-white/70 p-3 border border-yellow-100">
             <dt className="font-bold text-slate-500">Paket tersedia</dt>
-            <dd className="mt-1 font-semibold text-slate-900">27 tryout</dd>
+            <dd className="mt-1 font-semibold text-slate-900">{PASTI_LULUS_PACKAGE_COUNT} tryout</dd>
           </div>
           <div className="rounded-xl bg-white/70 p-3 border border-yellow-100">
             <dt className="font-bold text-slate-500">Format</dt>

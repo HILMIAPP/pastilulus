@@ -53,7 +53,17 @@ export const PASTI_LULUS_ITEMS: PastiLulusItem[] = [
 ];
 
 export const INDEX_PDF_FILENAME = "00_INDEX_DAFTAR_TRYOUT.pdf";
+export const DEFAULT_PASTI_LULUS_FOLDER = "tryout_univ_jurusan_pastilulus_pdf" as const;
+export const ADDITIONAL_PASTI_LULUS_FOLDER = "tryout_tambahan_univ_jurusan_pastilulus_pdf" as const;
+export const BATCH2_PASTI_LULUS_FOLDER = "tryout_tambahan_batch2_univ_jurusan_pastilulus_pdf" as const;
 export const ADDITIONAL_INDEX_PDF_FILENAMES = [
   "00_INDEX_DAFTAR_TRYOUT_TAMBAHAN.pdf",
   "00_INDEX_DAFTAR_TRYOUT_BATCH2.pdf",
 ] as const;
+
+export function getPastiLulusDefaultFolder(nomor: string) {
+  const itemNumber = Number(nomor);
+  if (itemNumber <= 27) return DEFAULT_PASTI_LULUS_FOLDER;
+  if (itemNumber <= 36) return ADDITIONAL_PASTI_LULUS_FOLDER;
+  return BATCH2_PASTI_LULUS_FOLDER;
+}

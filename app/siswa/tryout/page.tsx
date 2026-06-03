@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { GraduationCap, Lock, PlayCircle, Target, Trophy } from "lucide-react";
-import { tryoutPaket, tryoutUmptkinPaket } from "@/lib/app-data";
+import { tryoutPaket, tryoutUmptkinPaket, tryoutPastiLulusPaket } from "@/lib/app-data";
 import type { TryoutPaket } from "@/lib/app-data";
 import { canAccessTier, getCurrentSession } from "@/lib/session";
 import { TryoutFreeGateButton } from "@/components/tryout-free-gate";
 import { checkPastiLulusAccessAction } from "@/lib/pasti-lulus-actions";
 import { PastiLulusCard } from "@/components/pasti-lulus-token-gate";
+import { PASTI_LULUS_ITEMS } from "@/lib/pasti-lulus-data";
 
 function PaketCard({ p, session }: { p: TryoutPaket; session: Awaited<ReturnType<typeof getCurrentSession>> }) {
   const hasAccess = canAccessTier(session?.tier ?? "free", p.akses);
@@ -64,7 +65,14 @@ function PaketCard({ p, session }: { p: TryoutPaket; session: Awaited<ReturnType
 
       <div className="mt-5 flex flex-wrap gap-3">
         {hasAccess ? (
-          p.akses === "gratis" ? (
+          p.requiresPastiLulusToken ? (
+            <Link
+              href={`/siswa/tryout/${p.slug}`}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-500 px-4 py-3 text-sm font-bold text-white hover:bg-yellow-600 min-[420px]:flex-none"
+            >
+              <PlayCircle size={17} /> Mulai simulasi
+            </Link>
+          ) : p.akses === "gratis" ? (
             <TryoutFreeGateButton
               href={`/siswa/tryout/${p.slug}`}
               userName={session?.name}
@@ -170,12 +178,28 @@ export default async function TryoutIndexPage() {
         </div>
       </div>
       <p className="mt-1 mb-6 max-w-2xl text-sm text-slate-500">
-        27 paket tryout spesifik universitas &amp; jurusan. Akses gratis — masukkan kode token yang diberikan admin untuk membuka semua materi.
+        {PASTI_LULUS_ITEMS.length} paket tryout spesifik universitas &amp; jurusan. Akses gratis — masukkan kode token yang diberikan admin untuk membuka semua materi.
       </p>
 
-      <div className="max-w-md">
-        <PastiLulusCard hasAccess={hasPastiLulusAccess} />
-      </div>
+      {hasPastiLulusAccess ? (
+        <>
+          <div className="mb-5 flex flex-wrap items-center gap-3">
+            <Link
+              href="/siswa/pasti-lulus"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm font-black text-yellow-800 hover:bg-yellow-100"
+            >
+              <Trophy size={16} /> Buka PDF & pembahasan
+            </Link>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            {tryoutPastiLulusPaket.map((p) => <PaketCard key={p.id} p={p} session={session} />)}
+          </div>
+        </>
+      ) : (
+        <div className="max-w-md">
+          <PastiLulusCard hasAccess={hasPastiLulusAccess} />
+        </div>
+      )}
 
     </main>
   );
